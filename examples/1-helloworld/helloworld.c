@@ -1,14 +1,17 @@
-# copied from ProgrammingOnTheWii
-#
+// copied from ProgrammingOnTheWiiU helloworld.
+//   added timer from helloworld.c from wut/samples
+//   to avoid screen flicker
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <malloc.h>
 
-#include <coreinit/screen.h>
 #include <coreinit/cache.h>
+#include <coreinit/screen.h>
+#include <coreinit/time.h>
+#include <whb/log.h>
 #include <whb/log_cafe.h>
 #include <whb/log_udp.h>
-#include <whb/log.h>
 #include <whb/proc.h>
 
 int main(int argc, char** argv) {
@@ -29,6 +32,7 @@ int main(int argc, char** argv) {
 
 /*  OSScreen needs buffers for each display - get the size of those now.
     "DRC" is Nintendo's acronym for the Gamepad. */
+
     size_t tvBufferSize = OSScreenGetBufferSizeEx(SCREEN_TV);
     size_t drcBufferSize = OSScreenGetBufferSizeEx(SCREEN_DRC);
     WHBLogPrintf("Will allocate 0x%X bytes for the TV, " \
@@ -70,12 +74,17 @@ int main(int argc, char** argv) {
     OSScreenEnableEx(SCREEN_TV, true);
     OSScreenEnableEx(SCREEN_DRC, true);
 
+
+    int last_tm_sec = -1;
+    OSCalendarTime tm;
+
 /*  WHBProcIsRunning will return false if the OS asks us to quit, so it's a
     good candidate for a loop */
-    bool drawn = false;
+
     while(WHBProcIsRunning()) {
-        if (!drawn)
-        {
+        OSTicksToCalendarTime(OSGetTime(), &tm);
+   
+        if (tm.tm_sec >= last_tm_sec + 10) {
             /*  Clear each buffer - the 0x... is an RGBX colour */
             OSScreenClearBufferEx(SCREEN_TV, 0x00000000);
             OSScreenClearBufferEx(SCREEN_DRC, 0x00000000);
@@ -95,7 +104,8 @@ int main(int argc, char** argv) {
                 committing your graphics changes. */
             OSScreenFlipBuffersEx(SCREEN_TV);
             OSScreenFlipBuffersEx(SCREEN_DRC);
-            drawn = true;
+
+            last_tm_sec = tm.tm_sec;
         }
     }
 
