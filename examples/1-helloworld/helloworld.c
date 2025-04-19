@@ -3,88 +3,77 @@
 //   to avoid screen flicker
 
 #include <stdint.h>
+#include <stdio.h>
 #include <stdbool.h>
 #include <malloc.h>
 
 #include <coreinit/cache.h>
 #include <coreinit/screen.h>
+#include <coreinit/thread.h>
 #include <coreinit/time.h>
 #include <whb/log.h>
 #include <whb/log_cafe.h>
 #include <whb/log_udp.h>
 #include <whb/proc.h>
 
-int main(int argc, char** argv) {
-/*  Init logging. We log both to Cafe's internal logger (shows up in Decaf, some
-    crash logs) and over UDP to be received with udplogserver. */
+int main(int argc, char **argv)
+{
+    /*  Init logging. We log both to Cafe's internal logger (shows up in Decaf, some
+        crash logs) and over UDP to be received with udplogserver. */
     WHBLogCafeInit();
     WHBLogUdpInit();
-/*  WHBLogPrint and WHBLogPrintf add new line characters for you */
+    /*  WHBLogPrint and WHBLogPrintf add new line characters for you */
     WHBLogPrint("Hello World! Logging initialised.");
 
-/*  Init WHB's ProcUI wrapper. This will manage all the little Cafe OS bits and
-    pieces for us - home menu overlay, power saving features, etc. */
+    /*  Init WHB's ProcUI wrapper. This will manage all the little Cafe OS bits and
+        pieces for us - home menu overlay, power saving features, etc. */
     WHBProcInit();
 
-/*  Init OSScreen. This is the really simple graphics API we'll be using to
-    draw some text! */
+    /*  Init OSScreen. This is the really simple graphics API we'll be using to
+        draw some text! */
     OSScreenInit();
 
-/*  OSScreen needs buffers for each display - get the size of those now.
-    "DRC" is Nintendo's acronym for the Gamepad. */
+    /*  OSScreen needs buffers for each display - get the size of those now.
+        "DRC" is Nintendo's acronym for the Gamepad. */
 
     size_t tvBufferSize = OSScreenGetBufferSizeEx(SCREEN_TV);
     size_t drcBufferSize = OSScreenGetBufferSizeEx(SCREEN_DRC);
-    WHBLogPrintf("Will allocate 0x%X bytes for the TV, " \
+    WHBLogPrintf("Will allocate 0x%X bytes for the TV, "
                  "and 0x%X bytes for the DRC.",
                  tvBufferSize, drcBufferSize);
 
-/*  Try to allocate an area for the buffers. According to OSScreenSetBufferEx's
-    documentation, these need to be 0x100 aligned. */
-    void* tvBuffer = memalign(0x100, tvBufferSize);
-    void* drcBuffer = memalign(0x100, drcBufferSize);
+    /*  Try to allocate an area for the buffers. According to OSScreenSetBufferEx's
+        documentation, these need to be 0x100 aligned. */
+    void *tvBuffer = memalign(0x100, tvBufferSize);
+    void *drcBuffer = memalign(0x100, drcBufferSize);
 
-/*  Make sure the allocation actually succeeded! */
-    if (!tvBuffer || !drcBuffer) {
+    /*  Make sure the allocation actually succeeded! */
+
+    if (!tvBuffer || !drcBuffer)
+    {
         WHBLogPrint("Out of memory!");
-
-    /*  It's vital to free everything - under certain circumstances, your memory
-        allocations can stay allocated even after you quit. */
-        if (tvBuffer) free(tvBuffer);
-        if (drcBuffer) free(drcBuffer);
-
-    /*  Deinit everything */
-        OSScreenShutdown();
-        WHBProcShutdown();
-
-        WHBLogPrint("Quitting.");
-        WHBLogCafeDeinit();
-        WHBLogUdpDeinit();
-
-    /*  Your exit code doesn't really matter, though that may be changed in
-        future. Don't use -3, that's reserved for HBL. */
-        return 1;
+        // skip to deallocation and teardown
     }
+    else
+    {
+        /*  Buffers are all good, set them */
+        OSScreenSetBufferEx(SCREEN_TV, tvBuffer);
+        OSScreenSetBufferEx(SCREEN_DRC, drcBuffer);
 
-/*  Buffers are all good, set them */
-    OSScreenSetBufferEx(SCREEN_TV, tvBuffer);
-    OSScreenSetBufferEx(SCREEN_DRC, drcBuffer);
+        /*  Finally, enable OSScreen for each display! */
+        OSScreenEnableEx(SCREEN_TV, true);
+        OSScreenEnableEx(SCREEN_DRC, true);
 
-/*  Finally, enable OSScreen for each display! */
-    OSScreenEnableEx(SCREEN_TV, true);
-    OSScreenEnableEx(SCREEN_DRC, true);
+        OSCalendarTime tm;
+        char tm_buffer[128];
 
+        /*  WHBProcIsRunning will return false if the OS asks us to quit, so it's a
+            good candidate for a loop */
 
-    int last_tm_sec = -1;
-    OSCalendarTime tm;
+        while (WHBProcIsRunning())
+        {
+            OSTicksToCalendarTime(OSGetTime(), &tm);
 
-/*  WHBProcIsRunning will return false if the OS asks us to quit, so it's a
-    good candidate for a loop */
-
-    while(WHBProcIsRunning()) {
-        OSTicksToCalendarTime(OSGetTime(), &tm);
-   
-        if (tm.tm_sec >= last_tm_sec + 10) {
             /*  Clear each buffer - the 0x... is an RGBX colour */
             OSScreenClearBufferEx(SCREEN_TV, 0x00000000);
             OSScreenClearBufferEx(SCREEN_DRC, 0x00000000);
@@ -92,9 +81,12 @@ int main(int argc, char** argv) {
             /*  Print some text. Coordinates are (columns, rows). */
             OSScreenPutFontEx(SCREEN_TV, 0, 0, "Hello world! This is the TV.");
             OSScreenPutFontEx(SCREEN_TV, 0, 1, "Neat, right?");
+            sprintf(tm_buffer, "time %2d:%2d:%2d", tm.tm_hour, tm.tm_min, tm.tm_sec);
+            OSScreenPutFontEx(SCREEN_TV, 0, 2, tm_buffer);
 
             OSScreenPutFontEx(SCREEN_DRC, 0, 0, "Hello world! This is the DRC.");
             OSScreenPutFontEx(SCREEN_DRC, 0, 1, "Neat, right?");
+            OSScreenPutFontEx(SCREEN_DRC, 0, 2, tm_buffer);
 
             /*  Flush all caches - read the tutorial, please! */
             DCFlushRange(tvBuffer, tvBufferSize);
@@ -105,18 +97,20 @@ int main(int argc, char** argv) {
             OSScreenFlipBuffersEx(SCREEN_TV);
             OSScreenFlipBuffersEx(SCREEN_DRC);
 
-            last_tm_sec = tm.tm_sec;
+            OSSleepTicks(OSMillisecondsToTicks(1000));
         }
+
+        WHBLogPrint("Got shutdown request!");
     }
 
-    WHBLogPrint("Got shutdown request!");
+    /*  It's vital to free everything - under certain circumstances, your memory
+        allocations can stay allocated even after you quit. */
+    if (tvBuffer)
+        free(tvBuffer);
+    if (drcBuffer)
+        free(drcBuffer);
 
-/*  It's vital to free everything - under certain circumstances, your memory
-    allocations can stay allocated even after you quit. */
-    if (tvBuffer) free(tvBuffer);
-    if (drcBuffer) free(drcBuffer);
-
-/*  Deinit everything */
+    /*  Deinit everything */
     OSScreenShutdown();
     WHBProcShutdown();
 
@@ -124,7 +118,7 @@ int main(int argc, char** argv) {
     WHBLogCafeDeinit();
     WHBLogUdpDeinit();
 
-/*  Your exit code doesn't really matter, though that may be changed in
-    future. Don't use -3, that's reserved for HBL. */
+    /*  Your exit code doesn't really matter, though that may be changed in
+        future. Don't use -3, that's reserved for HBL. */
     return 1;
 }
