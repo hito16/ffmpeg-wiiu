@@ -3,11 +3,22 @@ Example of WHBLogConsoleInit & WHBLogPrint from
 ProgrammingOnTheU ButtonTester
 WHBLogConsoleDraw must be called to draw to the screen.  I overdid it to address CEMU
 refresh issues.
-*/
+
+ About directories
+ 
+ /vol/external01 is the CWD of a running app
+ On the WiiU, /vol/external01
+      is the root of the SD card, and parent directory visibilty is restricted.
+ In CEMU,  /vol/external01
+     is just part of CEMU virtual storage. You can cd into parent and explore.
+     CEMU supports virtual SD  which is a folder on the host. Once you configure CEMU,
+     the virtual CD folder mapped to /vol/storage_mlc01 
+ */
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <dirent.h>
+
 
 #include <coreinit/thread.h>
 #include <whb/log_console.h>
@@ -61,8 +72,12 @@ void do_chdir(char *targetdir)
 {
     WHBLogPrintf("== do_chdir %s", targetdir);
     WHBLogConsoleDraw();
-    chdir(targetdir);
-    do_getcwd();
+    if(chdir(targetdir) == -1) {
+        WHBLogPrintf("Error: chdir() failed on %s", targetdir);
+        WHBLogConsoleDraw();
+    } else {
+        do_getcwd(); 
+    }
 }
 
 int main(int argc, char **argv)
@@ -84,23 +99,28 @@ int main(int argc, char **argv)
         OSSleepTicks(OSMillisecondsToTicks(3000));
 
         WHBLogPrint("");
-        WHBLogPrint("== on wiiu, you'll see the SD card root (mount /vol/external01)");
-        WHBLogPrint("== in cemu, you'll see an empty dir, unless you set up emulated SD");
+        WHBLogPrint("== on wiiu, you'll see the SD card root (/vol/external01)");
+        WHBLogPrint("== in cemu, you'll see a 'wiiu' folder");
         WHBLogConsoleDraw();
         OSSleepTicks(OSMillisecondsToTicks(3000));
         do_getcwd();
         do_readdir("./");
         
-        WHBLogPrint("== on wiiu, only the SD card root and below are visible");
-        WHBLogPrint("== in cemu, this will work.");
+        WHBLogPrint("== Parent directories are only visible in CEMU, not the WIIU.");
         WHBLogConsoleDraw();
-        do_chdir("..");
-        do_readdir("./");
+        do_chdir("/vol");
+        do_readdir("/vol");
 
         do_chdir("/");
-        do_readdir("./");
+        do_readdir("/");
 
-        WHBLogPrint("== return to the SD card root");
+        WHBLogPrint("");
+        WHBLogConsoleDraw();
+        
+        WHBLogPrint("== In CEMU, your SD card root will be mounted here");
+        do_readdir("/vol/storage_mlc01");
+
+        WHBLogPrint("== return to /vol/external01");
         WHBLogConsoleDraw();
         do_chdir("/vol/external01");
 
