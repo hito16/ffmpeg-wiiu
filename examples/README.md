@@ -2,13 +2,15 @@
 
 ### Are you building media player?
 
-No. But if you're interesting in making your own media player, I highly recommend 
+No. It's currently out of my skillset.
+
+But if you're interesting in making your own media player, I learned a bunch
 looking at the project GaryOderNichts/FFmpeg-wiiu.  It states it is an 
 attempt to add WiiU's built in h264 decoding library to ffmpeg.
 
 ### What are these example files for?
 
-Learn WiiU programming by doing.   Dev environment, WiiU basic apps, ffmpeg API for detection and decoding, WiiU UI code, WiiU Texture Shaders, etc.
+I'm learning by doing.  Step up a Dev environment, make some WiiU basic apps, try some ffmpeg API for detection and decoding, learn some WiiU UI code (sdl, etc), try out WiiU Texture Shaders, etc.
 
 ### Things I've learned
 
@@ -43,6 +45,7 @@ A. Cemu - test .wuhb file in CEMU.
    - On your remote windows machine (or VM), create a windows share, copy .wuhb to share, load .wuhb file in CEMU
 
 B. Wiiload - needed for final integration tests on Wii U system. Quickly push changes to a running WiiU system.
+   - install the wiiload plugin, and following the instructions
 
 Note: So far, in my limited experience, homebrew runs on CEMU Windows, 
 but hangs on CEMU for Mac
