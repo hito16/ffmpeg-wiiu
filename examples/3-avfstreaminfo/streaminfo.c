@@ -97,12 +97,12 @@ int print_avformat_stream_info()
 
     found = get_first_filename(SD_WIIU, path_buffer, sizeof(path_buffer)) ||
             get_first_filename(SD_CEMU, path_buffer, sizeof(path_buffer));
-    if (found)
+    if (!found)
     {
-        long f_size = get_file_size(path_buffer);
-        WHBLogPrint("== success, found file.");
-        WHBLogPrintf("  (%d bytes)", f_size);
+        return -1;
     }
+    long f_size = get_file_size(path_buffer);
+    WHBLogPrintf("  (%d MBytes)", f_size / 1024 / 1024);
     WHBLogPrint("");
     WHBLogConsoleDraw();
 
@@ -128,7 +128,7 @@ int print_avformat_stream_info()
     }
     WHBLogPrint("= found stream info, detecting streams");
     WHBLogConsoleDraw();
-    WHBLogPrintf("= number of streams %d", sizeof(fmt_ctx->nb_streams));
+    WHBLogPrintf("= number of streams %d", fmt_ctx->nb_streams);
     WHBLogConsoleDraw();
     OSSleepTicks(OSMillisecondsToTicks(1000));
 
