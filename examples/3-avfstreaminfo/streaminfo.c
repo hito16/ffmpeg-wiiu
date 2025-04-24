@@ -201,13 +201,13 @@ int main(int argc, char **argv)
     WHBLogPrintf("print_avformat_stream_info() exited with code %d", ret);
     WHBLogConsoleDraw();
 
-    int times_left = 5;
+    int times_left = 10;
     while (WHBProcIsRunning() && times_left > 0)
     {
         times_left--;
-        WHBLogPrintf("shutting down in %d seconds", times_left * 3);
+        WHBLogPrintf("shutting down in %d seconds", times_left * 10);
         WHBLogConsoleDraw();
-        OSSleepTicks(OSMillisecondsToTicks(3000));
+        OSSleepTicks(OSMillisecondsToTicks(10000));
     }
 
     /*  If we get here, ProcUI said we should quit. */
