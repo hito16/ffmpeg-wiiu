@@ -2,15 +2,22 @@
 
 ### Are you building media player?
 
-No. It's currently out of my skillset.
-
-But if you're interesting in making your own media player, I learned a bunch
-looking at the project GaryOderNichts/FFmpeg-wiiu.  It states it is an 
-attempt to add WiiU's built in h264 decoding library to ffmpeg.
+No. That's currently out of my skillset.
 
 ### What are these example files for?
 
-I'm learning by doing.  Step up a Dev environment, make some WiiU basic apps, try some ffmpeg API for detection and decoding, learn some WiiU UI code (sdl, etc), try out WiiU Texture Shaders, etc.
+To learn by doing. Specifically
+* [Done] Step up and get comfortable with a homebrew Dev environment,
+* [Done] make some WiiU basic apps, 
+* [Done] update ffmepg_wiiu config script, and link with WiiU example code.
+* [Done] try some ffmpeg API for detection on WiiU
+* [WIP] compare file system speed to ffmpeg decoding speed on WiiU
+* learn some WiiU UI code (sdl, imGui, etc), 
+* try some ffmpeg sdl player code samples on the WiiU
+* try out GX Texture Shaders, etc.  Needed for performance.
+* learn queue systems used for decoder apps
+
+What I learn, I'll leave behind for others.
 
 ### Things I've learned
 

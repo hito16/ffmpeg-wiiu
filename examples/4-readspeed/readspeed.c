@@ -1,8 +1,8 @@
 /*
 
-== WIP 
-== DONE, added and tested fread routine, 
-== TBD, add ffpeg decoder 
+== WIP
+== DONE, added and tested fread routine,
+== TBD, add ffpeg decoder
 
 A simple example comparing freads vs read/decodes of media files on
 your SD card
@@ -30,33 +30,14 @@ UPDATE: this works on the WIIU, but crashes on CEMU.  TBD: debug
 #include <whb/log_console.h>
 #include <whb/proc.h>
 
-// from retroarch
-#define ticks_to_sec(ticks) \
-    (((uint64_t)(ticks)) / (17 * 13 * 5 * 5 * 5 * 5 * 5 * 5 * 3 * 3 * 2))
-
 struct Results {
-    int32_t filesize;
+    int32_t st_size;
     int test_type; /* 0 file, 1 decode */
     uint64_t ops;  /* freads vs packet decodes */
     uint64_t data_read;
     uint64_t start_time;
     uint64_t end_time;
 };
-
-const int BLK_SZ = 32768;
-
-/*   debugging only
-void custom_av_log(void *ptr, int level, const char *fmt, va_list vl)
-{
-    FILE *fp = fopen("/vol/storage_mlc01/media/av_log.txt", "a+");
-    if (fp)
-    {
-        vfprintf(fp, fmt, vl);
-        fflush(fp);
-        fclose(fp);
-    }
-}
-*/
 
 int get_first_filename(char *buffer, int size) {
     /* try to find /media in the WIIU SD mount, then the CEMU SD mount */
@@ -95,44 +76,44 @@ int64_t get_file_size(char *filename) {
     return f_stat.st_size;
 }
 
-int fread_file(char *fname, int blk_sz, struct Results *res) {
+int print_test_results(struct Results res) {
+    double datamb = res.data_read / 1024.0 / 1024;
+    long duration = 1 * OSTicksToSeconds(res.end_time - res.start_time);
+    WHBLogPrintf("  %.1f MB / %ld secs = %.3f MBps ", datamb, duration,
+                 (double)(datamb / duration));
+    WHBLogPrintf("  ops: %lld, data: %lld, ops/sec: %ld", res.ops,
+                 (long long)res.data_read, (long)(res.ops / duration));
+}
+
+int fread_test(char *fname, int blk_sz, struct Results *res) {
     unsigned char buffer[blk_sz];
     FILE *fptr;
-    uint64_t ops = 0;
+    uint64_t bytes;
     uint64_t data = 0;
-
-    WHBLogConsoleDraw();
+    uint64_t ops = 0;
 
     // Open the binary file for reading. Assumes you tested for access()
     fptr = fopen(fname, "rb");
-    WHBLogConsoleDraw();
     if (fptr == NULL) {
         WHBLogPrint("Error opening file");
         WHBLogConsoleDraw();
         return 1;
     }
-    WHBLogPrintf("Starting fread file test with buffer size %ld", blk_sz);
+    WHBLogPrintf("Starting fread file test with buffer size %ld...", blk_sz);
     WHBLogConsoleDraw();
 
     res->start_time = OSGetTime();
-    int64_t bytes_read;
-    while ((bytes_read = fread(buffer, sizeof(unsigned char), blk_sz, fptr)) >
-           0) {
+    while ((bytes = fread(buffer, sizeof(unsigned char), blk_sz, fptr)) > 0) {
         ops++;
-        data += bytes_read;
+        data += bytes;
     }
     res->end_time = OSGetTime();
-
     fclose(fptr);
 
     res->ops = ops;
     res->data_read = data;
 
-    double datamb = (double)(data / 1024 / 1024);
-    WHBLogPrintf("ops  %lld, data %lld ", res->ops, (long long)res->data_read);
-    WHBLogPrintf("data MB %.3f MB,  %.3f MBps ", datamb,
-                 (double)(datamb / (long long)OSTicksToSeconds(
-                                       res->end_time - res->start_time)));
+    print_test_results(*res);
 
     return 0;
 }
@@ -147,9 +128,18 @@ void print_times(struct Results res) {
     WHBLogConsoleDraw();
 }
 
+void print_header(char *path_buffer, int64_t st_size) {
+    WHBLogPrint("== Compare fread() speeds to media decode speeds to get a ");
+    WHBLogPrint("== rough measure of how much of an overhead decoding incurs");
+    WHBLogPrintf("==  file: %s", path_buffer);
+    WHBLogPrintf("  (%lld MBytes)", (long long)(st_size / 1024 / 1024));
+    WHBLogPrint("");
+    WHBLogConsoleDraw();
+    OSSleepTicks(OSMillisecondsToTicks(1000));
+}
+
 int runtests() {
     char path_buffer[1024];
-    int64_t f_size;
     int ret;
 
     ret = get_first_filename(path_buffer, 1024);
@@ -159,29 +149,16 @@ int runtests() {
         return ret;
     }
 
-    struct Results fread_res;
+    struct Results fread_res = {
+        .st_size = get_file_size(path_buffer),
+        .test_type = 0,
+    };
 
-    f_size = get_file_size(path_buffer);
-    WHBLogPrintf("==  file: %s", path_buffer);
-    WHBLogPrintf("  (%lld MBytes)", (long long)(f_size / 1024 / 1024));
-    WHBLogPrint("");
-    WHBLogConsoleDraw();
+    print_header(path_buffer, fread_res.st_size);
 
-    OSSleepTicks(OSMillisecondsToTicks(1000));
-
-    fread_file(path_buffer, 32768, &fread_res);
-    print_times(fread_res);
-
-    fread_file(path_buffer, 32768, &fread_res);
-    print_times(fread_res);
-
-    fread_file(path_buffer, 32768, &fread_res);
-    print_times(fread_res);
-
-    WHBLogPrintf("==  file: %s", path_buffer);
-    WHBLogPrintf("  (%lld MBytes)", (long long)(f_size / 1024 / 1024));
-    WHBLogPrint("");
-    WHBLogConsoleDraw();
+    fread_test(path_buffer, 32768, &fread_res);
+    fread_test(path_buffer, 32768, &fread_res);
+    fread_test(path_buffer, 32768, &fread_res);
 
     return 0;
 }
