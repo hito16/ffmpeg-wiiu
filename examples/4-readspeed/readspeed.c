@@ -30,6 +30,8 @@ UPDATE: this works on the WIIU, but crashes on CEMU.  TBD: debug
 #include <whb/log_console.h>
 #include <whb/proc.h>
 
+#include "exutil.h"
+
 struct Results {
     int32_t st_size;
     int test_type; /* 0 file, 1 decode */
@@ -38,43 +40,6 @@ struct Results {
     uint64_t start_time;
     uint64_t end_time;
 };
-
-int get_first_filename(char *buffer, int size) {
-    /* try to find /media in the WIIU SD mount, then the CEMU SD mount */
-    char *sdmounts[] = {
-        "/vol/external01/media",
-        "/vol/storage_mlc01/media",
-    };
-    int sd_idx = (access(sdmounts[0], F_OK) == 0)   ? 0
-                 : (access(sdmounts[1], F_OK) == 0) ? 1
-                                                    : -1;
-    if (sd_idx < 0) {
-        return -1;
-    }
-
-    DIR *dp = NULL;
-    struct dirent *ep = NULL;
-
-    dp = opendir(sdmounts[sd_idx]);
-    if (dp != NULL) {
-        while (ep = readdir(dp)) {
-            if (ep->d_type == DT_REG) {
-                snprintf(buffer, size, "%s/%s", sdmounts[sd_idx], ep->d_name);
-                return 0;
-            }
-        }
-        closedir(dp);
-    }
-    return -2;
-}
-
-int64_t get_file_size(char *filename) {
-    struct stat f_stat;
-    if (stat(filename, &f_stat) < 0) {
-        return -1;
-    }
-    return f_stat.st_size;
-}
 
 int print_test_results(struct Results res) {
     double datamb = res.data_read / 1024.0 / 1024;
@@ -112,9 +77,7 @@ int fread_test(char *fname, int blk_sz, struct Results *res) {
 
     res->ops = ops;
     res->data_read = data;
-
     print_test_results(*res);
-
     return 0;
 }
 
@@ -142,7 +105,7 @@ int runtests() {
     char path_buffer[1024];
     int ret;
 
-    ret = get_first_filename(path_buffer, 1024);
+    ret = util_get_first_media_file(path_buffer, 1024);
     if (ret != 0) {
         WHBLogPrint("failed to find a file in sd:/media");
         WHBLogConsoleDraw();
@@ -150,7 +113,7 @@ int runtests() {
     }
 
     struct Results fread_res = {
-        .st_size = get_file_size(path_buffer),
+        .st_size = util_get_file_size(path_buffer),
         .test_type = 0,
     };
 
@@ -158,7 +121,8 @@ int runtests() {
 
     fread_test(path_buffer, 32768, &fread_res);
     fread_test(path_buffer, 32768, &fread_res);
-    fread_test(path_buffer, 32768, &fread_res);
+    fread_test(path_buffer, 8192, &fread_res);
+    fread_test(path_buffer, 8192, &fread_res);
 
     return 0;
 }
@@ -188,6 +152,8 @@ int main(int argc, char **argv) {
     OSSleepTicks(OSMillisecondsToTicks(10000));
 
     WHBLogConsoleFree();
+
+    // SYSLaunchMenu();  // aroma
     WHBProcShutdown();
 
     return 0;

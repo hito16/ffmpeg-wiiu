@@ -20,8 +20,10 @@ include $(DEVKITPRO)/wut/share/wut_rules
 
 TARGET		:=	readspeed
 BUILD		:= 	build
-SOURCES		:=	.
-INCLUDES	:=	.
+SOURCES		:=	. \
+                             ../example-util
+INCLUDES	:=	. \
+                             ../example-util
 
 #-------------------------------------------------------------------------------
 # options for code generation

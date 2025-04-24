@@ -57,7 +57,7 @@ void do_readdir(char *targetdir) {
         while (ep = readdir(dp)) {
             numfiles++;
             if (numfiles < 10) {
-                WHBLogPrintfDraw("%s %s", ep->d_type == DT_DIR ? "D" : " ",
+                WHBLogPrintfDraw("  %s %s", ep->d_type == DT_DIR ? "D" : " ",
                                  ep->d_name);
             }
         }
@@ -91,37 +91,56 @@ int main(int argc, char **argv) {
         WHBLogPrint("Do directory operations work as expected on WiiU?");
         WHBLogPrint("");
         WHBLogPrint("== Using WBLog Console mode for output (RED screen)");
-        WHBLogPrintfDraw("== ");
 
-        OSSleepTicks(OSMillisecondsToTicks(3000));
+        OSSleepTicks(OSMillisecondsToTicks(2000));
+
+        char *checkdirs[] = {
+            "/vol/external01",     // SD mounted here on WIIU, start dir in both
+            "/vol/storage_mlc01",  // SD mounted here on CEMU
+            "/vol/",               // only visible on CEMU
+            "/"                    // only visible on CEMU
+        };
+        int access_check[4];
+
+        WHBLogPrintfDraw("== Checking access to interesting directories");
+        for (int i = 0; i < 4; i++) {
+            access_check[i] = access(checkdirs[i], F_OK);
+            WHBLogPrintf("    %s  %s", access_check[i] == 0 ? "y" : "n",
+                         checkdirs[i]);
+        }
+        WHBLogConsoleDraw();
+        OSSleepTicks(OSMillisecondsToTicks(2000));
 
         /*   display CWD and list directory */
         WHBLogPrint("");
-        WHBLogPrint("== on the wiiu, starting dir is /vol/external01");
-        WHBLogPrintfDraw("== in cemu, you'll see a 'wiiu' folder");
+        WHBLogPrint("== The starting dir is /vol/external01");
         OSSleepTicks(OSMillisecondsToTicks(3000));
-
         do_getcwd();
         do_readdir("./");
 
         /*  attempt to CD and list the parent directory */
-        WHBLogPrintfDraw(
-            "== Parent directories are only visible in CEMU, not the WIIU.");
-        do_chdir("/vol");
-        do_readdir("/vol");
+        if (access_check[2] == 0) {
+            WHBLogPrintfDraw("== Parent dirs are visible in CEMU, not WIIU.");
+            do_chdir("/vol");
+            do_readdir("/vol");
+        }
 
         /*  attempt to CD and list the root directory */
-        do_chdir("/");
-        do_readdir("/");
+        if (access_check[3] == 0) {
+            do_chdir("/");
+            do_readdir("/");
+        }
 
         WHBLogPrintfDraw("");
 
         /* attempt to read the CEMU SD card mount point*/
-        WHBLogPrintfDraw("== In CEMU, your SD card root will be mounted here");
-        do_readdir("/vol/storage_mlc01");
+        if (access_check[1] == 0) {
+            WHBLogPrintfDraw("== In CEMU, your SD card will be mounted here");
+            do_readdir("/vol/storage_mlc01");
+        }
 
         /* return to the WIIU homebrew SD card mount point */
-        WHBLogPrintfDraw("== return to WIIU SD card mount /vol/external01");
+        WHBLogPrintfDraw("== return to starting dir /vol/external01");
         do_chdir("/vol/external01");
 
         times_left--;
