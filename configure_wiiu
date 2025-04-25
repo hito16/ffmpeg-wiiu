@@ -24,7 +24,7 @@ export CFLAGS="-fomit-frame-pointer -ffast-math -fno-math-errno -funsafe-math-op
 --disable-programs \
 --disable-doc \
 --disable-everything \
---enable-decoder=mpeg4,h264,av1,aac,ac3,ogg,mp3 \
+--enable-decoder=mpeg4,h264,aac,ac3,mp3 \
 --enable-demuxer=mov,h264 \
 --enable-bsf=h264_mp4toannexb \
 --enable-filter=rotate,transpose \

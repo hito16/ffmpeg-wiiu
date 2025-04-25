@@ -76,7 +76,6 @@ int fread_test(char *fname, int blk_sz, struct TestResults *res) {
 
 void print_times(struct TestResults res) {
     OSCalendarTime tm;
-    char tm_buffer[128];
     OSTicksToCalendarTime(res.start_time, &tm);
     WHBLogPrintf("start time %2d:%2d:%2d  ", tm.tm_hour, tm.tm_min, tm.tm_sec);
     OSTicksToCalendarTime(res.end_time, &tm);
@@ -85,8 +84,7 @@ void print_times(struct TestResults res) {
 }
 
 void print_header(char *path_buffer, int64_t st_size) {
-    WHBLogPrint("== Compare fread() speeds to media decode speeds to get a ");
-    WHBLogPrint("== rough measure of how much of an overhead decoding incurs");
+    WHBLogPrint("== Compare fread() speeds to media decode speeds  ");
     WHBLogPrintf("==  file: %s", path_buffer);
     WHBLogPrintf("  (%lld MBytes)", (long long)(st_size / 1024 / 1024));
     WHBLogPrint("");
@@ -118,6 +116,7 @@ int runtests() {
     fread_test(path_buffer, 8192, &fread_res);
     fread_test(path_buffer, 8192, &fread_res);
     */
+
     av_print_codecs();
 
     struct TestResults avdecode_res = {

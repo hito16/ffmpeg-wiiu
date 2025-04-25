@@ -33,7 +33,15 @@ int WHBLogPrintfDraw(const char *format, ...) {
     WHBLogConsoleDraw();
     return result;
 }
-
+int print_test_results2(struct TestResults res) {
+    double datamb = res.data_read / 1024.0 / 1024;
+    long duration = 1 * OSTicksToSeconds(res.end_time - res.start_time);
+    WHBLogPrintf("  %.1f MB / %ld secs = %.3f MBps ", datamb, duration,
+                 (double)(datamb / duration));
+    WHBLogPrintf("  ops: %lld, data: %lld, ops/sec: %ld", res.ops,
+                 (long long)res.data_read, (long)(res.ops / duration));
+    WHBLogConsoleDraw();
+}
 /*
 To compile this example, you would typically use a command like:
 
@@ -60,9 +68,9 @@ int av_decode_test(char *input_filename, struct TestResults *res) {
       duration_probesize = ? bytes
      */
     AVDictionary *options = NULL;
-    av_dict_set(&options, "probesize", "2048", 0);         // fast!!
-    av_dict_set(&options, "fpsprobesize", "1024", 0);      // no effect
-    av_dict_set(&options, "formatprobesize", "32768", 0);  // no effect
+    av_dict_set(&options, "probesize", "10000", 0);        // fast!!
+    av_dict_set(&options, "fpsprobesize", "10000", 0);     // no effect
+    av_dict_set(&options, "formatprobesize", "10000", 0);  // no effect
 
     ret = avformat_open_input(&fmt_ctx, input_filename, NULL, &options);
     //  1. Open the input file using avformat_open_input.
@@ -161,10 +169,9 @@ int av_decode_test(char *input_filename, struct TestResults *res) {
     WHBLogPrintfDraw("Decoding VIDEO stream\n");
     int64_t ops = 0;
     int64_t data_sz = 0;
-    uint64_t now;
+    OSTime now;
     long duration = 0;
     OSCalendarTime tm;
-    char tm_buffer[128];
     res->start_time = OSGetTime();
     // 9. Read packets from the input file and decode them.
     while (av_read_frame(fmt_ctx, pkt) >= 0) {
@@ -191,14 +198,10 @@ int av_decode_test(char *input_filename, struct TestResults *res) {
 
                 // 11. Process the decoded frame.
                 if (ops > 1000 && ops % 1000 == 0) {
-                    now = OSGetTime();
-                    OSTicksToCalendarTime(now, &tm);
-                    duration =
-                        (long)(1 * OSTicksToSeconds(now - res->start_time));
-                    WHBLogPrintfDraw(
-                        "%2d:%2d:%2d   %ldsec, Processed %lld frames, %d fps",
-                        tm.tm_hour, tm.tm_min, tm.tm_sec, duration, ops,
-                        (ops / duration));
+                    res->end_time = OSGetTime();
+                    res->ops = ops;
+                    res->data_read = data_sz;
+                    print_test_results2(*res);
                 }
 
                 // Important:  av_frame_unref is crucial to release
