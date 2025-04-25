@@ -44,3 +44,15 @@ export CFLAGS="-fomit-frame-pointer -ffast-math -fno-math-errno -funsafe-math-op
 --disable-securetransport \
 --disable-xlib \
 --disable-zlib  
+
+# A default build only has the following codecs (decoder only)
+# Video h263
+# Video mpeg4
+# Video aac
+# Audio ac3
+# Audio mp3
+#
+# to enable x264, build and install 
+# --enable-libx264 \
+# --enable-gpl \
+# --disable-x86asm \

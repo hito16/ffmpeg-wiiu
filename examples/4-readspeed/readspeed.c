@@ -125,6 +125,9 @@ int runtests() {
     fread_test(path_buffer, 8192, &fread_res);
     fread_test(path_buffer, 8192, &fread_res);
 
+    av_print_codecs();
+    OSSleepTicks(OSMillisecondsToTicks(10000));
+
     av_decode_test(path_buffer);
 
     return 0;

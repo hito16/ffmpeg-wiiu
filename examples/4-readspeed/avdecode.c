@@ -1,6 +1,6 @@
 /* A mishmash of coding examples on ffmpeg api site.
 
-WIP - works up to loading a codec.  Before continuing, I need to 
+WIP - works up to loading a codec.  Before continuing, I need to
 build 3rd party codecs such as h264 into ffmpeg for WIIU
  */
 
@@ -14,6 +14,7 @@ build 3rd party codecs such as h264 into ffmpeg for WIIU
 #include <string.h>
 #include <whb/log.h>
 #include <whb/log_console.h>
+
 #include "readspeed.h"
 
 #define INBUF_SIZE 4096
@@ -50,11 +51,32 @@ int av_decode_test(char *input_filename) {
     int ret;
     int i;
 
-    // 1. Open the input file using avformat_open_input.
-    if (avformat_open_input(&fmt_ctx, input_filename, NULL, NULL) < 0) {
+    /* avformat_find_stream_info is very slow
+    Set the  option BEFORE opening input file. Defaults are currently
+      probesize = 5*10^6 "data" bytes?  - only this seems to be set?
+      fsprobesize = 5.4*10^13 frames
+      format_probesize = 5.4*10^13 bytes
+     */
+    AVDictionary *options = NULL;
+    av_dict_set(&options, "probesize", "32768", 0);         // fast!!
+    av_dict_set(&options, "fps_probe_size", "2048", 0);     // no effect
+    av_dict_set(&options, "format_probesize", "32768", 0);  // no effect
+
+    ret = avformat_open_input(&fmt_ctx, input_filename, NULL, &options);
+    //  1. Open the input file using avformat_open_input.
+    //  ret = avformat_open_input(&fmt_ctx, input_filename, NULL, NULL);
+    av_dict_free(&options);  // Free the options dictionary
+
+    if (ret < 0) {
         WHBLogPrintfDraw("Could not open input file %s\n", input_filename);
         return 1;
     }
+    /*
+    WHBLogPrintf("probesize:%lld ", fmt_ctx->probesize);
+    WHBLogPrintf("fps_probe_size:%lld", fmt_ctx->fps_probe_size);
+    WHBLogPrintf("format_probesize:%lld", fmt_ctx->format_probesize);
+    WHBLogConsoleDraw();
+    */
 
     WHBLogPrintfDraw("calling avformat_find_stream_info\n");
     // 2. Find the stream information with avformat_find_stream_info.
