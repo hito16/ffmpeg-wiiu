@@ -12,10 +12,11 @@ Build this in docker, as these steps change your DEVKITPRO install
 - In docker, go to the ffmpeg directory and do make install
 - The includes, libs, etc will be installed in $DEVKITPRO/portlibs/ppc
 
-Test:
-pick a compatible media file
-load file too buffer with freads test to colleting timings, discard data
-load file with ffmpeg libraries, decode video frames, discard data
+Test: measure time it takes to read, decode & discard frames
+
+1. pick a compatible media file (first file found in sd:/media)
+2. load file to buffer with freads() test to collet timings, discard data
+3. load file with ffmpeg libraries, decode video frames, discard data
 
 Sample results:
 Test    Filesz Ext  res.    codecs     data read   MBps   ops/sec
@@ -33,7 +34,7 @@ Before profiling, we can guess for one MB of the file, 4sec time spent is
    0.08 sec      for pure reading data off SD
    3.92 sec      for decoding data in frames
 
-0.08 / 4  = 0.02 or 2% of time spent reading, the rest is decoding.
+Also  0.08sec / 4sec = 0.02 or "2% of time spent reading, the rest is decoding".
 
 Decode test notes:
 The decode test case only decodes video stream (not audio) and drops the frames
