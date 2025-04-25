@@ -16,7 +16,6 @@
 
  once in the container
 ```
-  cd $HOME/Documents/code
   cp ffmpeg-wiiu/configure_wiiu ffmpeg   
   cd ffmpeg
   ./configure_wiiu
