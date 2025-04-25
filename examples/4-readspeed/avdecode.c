@@ -161,6 +161,10 @@ int av_decode_test(char *input_filename, struct TestResults *res) {
     WHBLogPrintfDraw("Decoding VIDEO stream\n");
     int64_t ops = 0;
     int64_t data_sz = 0;
+    uint64_t now;
+    long duration = 0;
+    OSCalendarTime tm;
+    char tm_buffer[128];
     res->start_time = OSGetTime();
     // 9. Read packets from the input file and decode them.
     while (av_read_frame(fmt_ctx, pkt) >= 0) {
@@ -186,6 +190,16 @@ int av_decode_test(char *input_filename, struct TestResults *res) {
                 }
 
                 // 11. Process the decoded frame.
+                if (ops > 1000 && ops % 1000 == 0) {
+                    now = OSGetTime();
+                    OSTicksToCalendarTime(now, &tm);
+                    duration =
+                        (long)(1 * OSTicksToSeconds(now - res->start_time));
+                    WHBLogPrintfDraw(
+                        "%2d:%2d:%2d   %ldsec, Processed %lld frames, %d fps",
+                        tm.tm_hour, tm.tm_min, tm.tm_sec, duration, ops,
+                        (ops / duration));
+                }
 
                 // Important:  av_frame_unref is crucial to release
                 // resources
