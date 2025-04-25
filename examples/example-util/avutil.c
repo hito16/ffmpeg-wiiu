@@ -6,7 +6,7 @@
 int av_print_codecs() {
     const AVCodec *codec = NULL;
     void *i = 0;
-    WHBLogPrintf("= Available codecs compiled into ffmpeg");
+    WHBLogPrintf("= Reminder: Available codecs compiled into ffmpeg");
     while ((codec = av_codec_iterate(&i))) {
         const char *codec_type_str;
         switch (codec->type) {
@@ -21,10 +21,10 @@ int av_print_codecs() {
                 break;
         }
 
-        WHBLogPrintf("  %s%s %s %s %s", 
-                     av_codec_is_decoder(codec) ? "D" : "-",
-                     av_codec_is_encoder(codec) ? "E" : "-", codec_type_str,codec->name,
-                     
+        WHBLogPrintf("  %s%s %s %s %s", av_codec_is_decoder(codec) ? "D" : "-",
+                     av_codec_is_encoder(codec) ? "E" : "-", codec_type_str,
+                     codec->name,
+
                      codec->long_name);
     }
     WHBLogConsoleDraw();

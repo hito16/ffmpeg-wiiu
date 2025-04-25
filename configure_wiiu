@@ -24,7 +24,7 @@ export CFLAGS="-fomit-frame-pointer -ffast-math -fno-math-errno -funsafe-math-op
 --disable-programs \
 --disable-doc \
 --disable-everything \
---enable-decoder=mpeg4,h264_wiiu,aac,ac3,mp3 \
+--enable-decoder=mpeg4,h264,av1,aac,ac3,ogg,mp3 \
 --enable-demuxer=mov,h264 \
 --enable-bsf=h264_mp4toannexb \
 --enable-filter=rotate,transpose \
@@ -44,15 +44,3 @@ export CFLAGS="-fomit-frame-pointer -ffast-math -fno-math-errno -funsafe-math-op
 --disable-securetransport \
 --disable-xlib \
 --disable-zlib  
-
-# A default build only has the following codecs (decoder only)
-# Video h263
-# Video mpeg4
-# Video aac
-# Audio ac3
-# Audio mp3
-#
-# to enable x264, build and install 
-# --enable-libx264 \
-# --enable-gpl \
-# --disable-x86asm \

@@ -20,6 +20,8 @@ Build this in docker, as these steps change your DEVKITPRO install
 UPDATE: this works on the WIIU, but crashes on CEMU.  TBD: debug
  */
 
+#include "readspeed.h"
+
 #include <coreinit/thread.h>
 #include <dirent.h>
 #include <libavformat/avformat.h>
@@ -31,18 +33,8 @@ UPDATE: this works on the WIIU, but crashes on CEMU.  TBD: debug
 #include <whb/proc.h>
 
 #include "exutil.h"
-#include "readspeed.h"
 
-struct Results {
-    int32_t st_size;
-    int test_type; /* 0 file, 1 decode */
-    uint64_t ops;  /* freads vs packet decodes */
-    uint64_t data_read;
-    uint64_t start_time;
-    uint64_t end_time;
-};
-
-int print_test_results(struct Results res) {
+int print_test_results(struct TestResults res) {
     double datamb = res.data_read / 1024.0 / 1024;
     long duration = 1 * OSTicksToSeconds(res.end_time - res.start_time);
     WHBLogPrintf("  %.1f MB / %ld secs = %.3f MBps ", datamb, duration,
@@ -51,7 +43,7 @@ int print_test_results(struct Results res) {
                  (long long)res.data_read, (long)(res.ops / duration));
 }
 
-int fread_test(char *fname, int blk_sz, struct Results *res) {
+int fread_test(char *fname, int blk_sz, struct TestResults *res) {
     unsigned char buffer[blk_sz];
     FILE *fptr;
     uint64_t bytes;
@@ -82,7 +74,7 @@ int fread_test(char *fname, int blk_sz, struct Results *res) {
     return 0;
 }
 
-void print_times(struct Results res) {
+void print_times(struct TestResults res) {
     OSCalendarTime tm;
     char tm_buffer[128];
     OSTicksToCalendarTime(res.start_time, &tm);
@@ -113,7 +105,7 @@ int runtests() {
         return ret;
     }
 
-    struct Results fread_res = {
+    struct TestResults fread_res = {
         .st_size = util_get_file_size(path_buffer),
         .test_type = 0,
     };
@@ -121,14 +113,20 @@ int runtests() {
     print_header(path_buffer, fread_res.st_size);
 
     fread_test(path_buffer, 32768, &fread_res);
+    /*
     fread_test(path_buffer, 32768, &fread_res);
     fread_test(path_buffer, 8192, &fread_res);
     fread_test(path_buffer, 8192, &fread_res);
-
+    */
     av_print_codecs();
-    OSSleepTicks(OSMillisecondsToTicks(10000));
 
-    av_decode_test(path_buffer);
+    struct TestResults avdecode_res = {
+        .st_size = util_get_file_size(path_buffer),
+        .test_type = 1,
+    };
+    av_decode_test(path_buffer, &avdecode_res);
+    print_test_results(avdecode_res);
+    OSSleepTicks(OSMillisecondsToTicks(10000));
 
     return 0;
 }
