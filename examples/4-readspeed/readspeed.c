@@ -18,10 +18,10 @@ Test: measure time it takes to read, decode & discard frames
 2. load file to buffer with freads() test to collet timings, discard data
 3. load file with ffmpeg libraries, decode video frames, discard data
 
-Sample results:
+Sample results 720x460 "gamepad":
 Test    Filesz Ext  res.    codecs     data read   MBps   ops/sec
 fread() 766MB  mp4 720x460  h264, aac  766 MB      12.16  389 reads (32k buffer)
-decode  766MB  mp4 720x460  h264, aac  600 MB      0.25   55  frame per second
+decode  766MB  mp4 720x460  h264, aac  600 MB      0.25   55  frames per second
 
 The MBps is most interesting.
 decode  MBps  0.25 or   1/ 0.25 = 4    seconds per 1 MB
@@ -29,16 +29,28 @@ fread() MBps 12.16 or   1/12.16 = 0.08 seconds per 1 MB
 
 difference                        3.92 seconds per 1 MB
 
-Before profiling, we can guess for one MB of the file, 4sec time spent is
+Before profiling, we can guess for 1 MB of the file, 4sec time spent as
 
    0.08 sec      for pure reading data off SD
    3.92 sec      for decoding data in frames
 
 Also  0.08sec / 4sec = 0.02 or "2% of time spent reading, the rest is decoding".
 
+Sample results 1920x800 HDMI (according to Nintendo)
+Test    Filesz Ext  res.    codecs     data read   MBps   ops/sec
+fread() 2080MB mp4 1920x800  h264, aac  2080 MB   12.1  387 reads (32k buffer)
+decode  2080MB mp4 1920x800  h264, aac  1650 MB    0.1  10 frames per second
+
+This time we can guess <1% of time is spent on reads.
+
+Sample results 480x360 Wii friendly 4:3
+Test    Filesz  Ext  res.    codecs     data read   MBps   ops/sec
+fread() 12.8MB  mp4 480x360  h264, aac  9.4 MB    12.95  415 reads (32k buffer)
+decode  12.8MB  mp4 480x360  h264, aac  12.8 MB   0.136  143 frames per second
+
 Decode test notes:
 The decode test case only decodes video stream (not audio) and drops the frames
-after decoding.  Therefore the decode test processes less data than the fread
+after decoding.  We can estimate the video frames are 75-80% of the file
 
 Fread() test notes:
 1. Multiple back to back runs with the same buffer size reveal the same MBps and
@@ -158,7 +170,7 @@ int runtests() {
     print_header(path_buffer, fread_res.st_size);
 
     fread_test(path_buffer, 32768, &fread_res);
-    /*
+    /* No difference between passes or buffer sizes
     fread_test(path_buffer, 32768, &fread_res);
     fread_test(path_buffer, 8192, &fread_res);
     fread_test(path_buffer, 8192, &fread_res);
@@ -171,7 +183,12 @@ int runtests() {
         .test_type = 1,
     };
     av_decode_test(path_buffer, &avdecode_res);
+
+    WHBLogPrint("== Final decode results  ");
     print_test_results(avdecode_res);
+    WHBLogPrint("== Final fread() results  ");
+    print_test_results(fread_res);
+
     OSSleepTicks(OSMillisecondsToTicks(10000));
 
     return 0;
@@ -190,9 +207,9 @@ int main(int argc, char **argv) {
     while (WHBProcIsRunning() && times_left > 0) {
         times_left--;
         WHBLogPrintf("shutting down in %d seconds...Press and hold Home",
-                     times_left * 10);
+                     times_left * 120);
         WHBLogConsoleDraw();
-        OSSleepTicks(OSMillisecondsToTicks(10000));
+        OSSleepTicks(OSMillisecondsToTicks(120000));
     }
 
     /*  If we get here, ProcUI said we should quit. */
