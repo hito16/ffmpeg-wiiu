@@ -11,7 +11,8 @@ To learn by doing. Specifically
 * [Done] make some WiiU basic apps, 
 * [Done] update ffmepg_wiiu config script, and link with WiiU example code.
 * [Done] try some ffmpeg API for detection on WiiU
-* [WIP] compare file system speed to ffmpeg decoding speed on WiiU
+* [Done] compare file system speed to ffmpeg decoding speed on WiiU
+* set up remote logging (udp, etc) and debugging, maybe Shipwright?
 * learn some WiiU UI code (sdl, imGui, etc), 
 * try some ffmpeg sdl player code samples on the WiiU
 * try out GX Texture Shaders, etc.  Needed for performance.
@@ -53,6 +54,11 @@ A. Cemu - test .wuhb file in CEMU.
 
 B. Wiiload - needed for final integration tests on Wii U system. Quickly push changes to a running WiiU system.
    - install the wiiload plugin, and following the instructions
+   - Aroma wiiload plugin takes away most of the pain.  At this point, no reason to not upgrade Aroma.
 
 Note: So far, in my limited experience, homebrew runs on CEMU Windows, 
 but hangs on CEMU for Mac
+
+##### Logging / Debugging
+ I've reached to end of printing to the screen and saving to files.
+ TBD - set up udp logging and gdb plug in.
