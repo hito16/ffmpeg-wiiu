@@ -1,9 +1,4 @@
 /*
-
-== WIP
-== DONE, added and tested fread routine,
-== TBD, add ffpeg decoder
-
 A simple example comparing freads vs read/decodes of media files on
 your SD card
 
@@ -17,7 +12,58 @@ Build this in docker, as these steps change your DEVKITPRO install
 - In docker, go to the ffmpeg directory and do make install
 - The includes, libs, etc will be installed in $DEVKITPRO/portlibs/ppc
 
-UPDATE: this works on the WIIU, but crashes on CEMU.  TBD: debug
+Test:
+pick a compatible media file
+load file too buffer with freads test to colleting timings, discard data
+load file with ffmpeg libraries, decode video frames, discard data
+
+Sample results:
+Test    Filesz Ext  res.    codecs     data read   MBps   ops/sec
+fread() 766MB  mp4 720x460  h264, aac  766 MB      12.16  389 reads (32k buffer)
+decode  766MB  mp4 720x460  h264, aac  600 MB      0.25   55  frame per second
+
+The MBps is most interesting.
+decode  MBps  0.25 or   1/ 0.25 = 4    seconds per 1 MB
+fread() MBps 12.16 or   1/12.16 = 0.08 seconds per 1 MB
+
+difference                        3.92 seconds per 1 MB
+
+Before profiling, we can guess for one MB of the file, 4sec time spent is
+
+   0.08 sec      for pure reading data off SD
+   3.92 sec      for decoding data in frames
+
+0.08 / 4  = 0.02 or 2% of time spent reading, the rest is decoding.
+
+Decode test notes:
+The decode test case only decodes video stream (not audio) and drops the frames
+after decoding.  Therefore the decode test processes less data than the fread
+
+Fread() test notes:
+1. Multiple back to back runs with the same buffer size reveal the same MBps and
+total test duration.
+2. I tried different buffer sizes, between 8k and 32k.   There was no change in
+MBps or time to read entire file.
+
+This leads me to think there is some underlying file buffering
+I don't have control over and/or the underlying block read sizes are fixed,
+irrespecetive of the size of my fread() operations.
+
+Impressions:
+How viable would a video player be under these conditions?  I picked a 720x460
+video close to the WiiU gamepad size 854x480.  This video shoud be
+representative of max output quality on the gamepad device.
+
+One the up side,
+The 720x460 video did 55 fps, tested by an inexperienced coder, with zero
+optimnizations. I did see a project at  GaryOderNichts/FFmpeg-wiiu to integrate
+WiiU's dedicated h264 processor. Additionally, GaryOderNichts released a
+profiler plugin that may shed light into the delay.
+
+On the down side
+We did a fraction of the work.  We didn't decode the audio, we didn't
+convert/resize the images or synchronize the audio and video streams, and we
+didn't output the frames to any display/audio device.
  */
 
 #include "readspeed.h"

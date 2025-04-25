@@ -1,7 +1,13 @@
 /* A mishmash of coding examples on ffmpeg api site.
 
-WIP - works up to loading a codec.  Before continuing, I need to
-build 3rd party codecs such as h264 into ffmpeg for WIIU
+Decoding video frame works!  
+
+Test case: simply reading, decoding then dropping frames.
+File  size  res.    codecs     data read   MBps  fps (ops/sec)
+766MB  mp4 720x460  h264, aac  600 MB      0.25   55  fps
+12.6mb mp4 480x360  h264, aac  9.4 MB      0.136  143 fps
+
+Sometimes the avformat_find_stream_info takes 10 sec, sometimes hangs :( 
  */
 
 #include <coreinit/thread.h>
@@ -69,8 +75,8 @@ int av_decode_test(char *input_filename, struct TestResults *res) {
      */
     AVDictionary *options = NULL;
     av_dict_set(&options, "probesize", "10000", 0);        // fast!!
-    av_dict_set(&options, "fpsprobesize", "10000", 0);     // no effect
-    av_dict_set(&options, "formatprobesize", "10000", 0);  // no effect
+    av_dict_set(&options, "fpsprobesize", "10000", 0);     // no effect ?
+    av_dict_set(&options, "formatprobesize", "10000", 0);  // no effect ?
 
     ret = avformat_open_input(&fmt_ctx, input_filename, NULL, &options);
     //  1. Open the input file using avformat_open_input.
