@@ -31,6 +31,7 @@ UPDATE: this works on the WIIU, but crashes on CEMU.  TBD: debug
 #include <whb/proc.h>
 
 #include "exutil.h"
+#include "readspeed.h"
 
 struct Results {
     int32_t st_size;
@@ -123,6 +124,8 @@ int runtests() {
     fread_test(path_buffer, 32768, &fread_res);
     fread_test(path_buffer, 8192, &fread_res);
     fread_test(path_buffer, 8192, &fread_res);
+
+    av_decode_test(path_buffer);
 
     return 0;
 }
