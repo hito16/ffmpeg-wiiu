@@ -4,36 +4,35 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include <romfs-wiiu.h>
-#include <whb/proc.h>
-#ifdef DEBUG
+#include <whb/log.h>
 #include <whb/log_udp.h>
-#endif
+#include <whb/proc.h>
 
 int main(int argc, char** argv) {
     TTF_Font* font = NULL;
 
-#ifdef DEBUG
-    WHBLogUdpInit();
-#endif
-
     romfsInit();
-
     SDL_Init(SDL_INIT_EVERYTHING);
+
+    // WHBProcInit();
+    WHBLogUdpInit();
 
     TTF_Init();
     // downloaded google font and placed in ./romfs/res
     font = TTF_OpenFont("romfs:/res/Roboto-Regular.ttf", 28);
-    WHBProcInit();
     while (WHBProcIsRunning()) {
+        /*You should get past the white WIIU loading screen
+          and see a black screen.
+          Additionally, you should be seeing logs in your udp reader
+        */
+        WHBLogPrint("hello world");
     }
     WHBProcShutdown();
 
     SDL_Quit();
     romfsExit();
 
-#ifdef DEBUG
     WHBLogUdpDeinit();
-#endif
 
     /*  Your exit code doesn't really matter, though that may be changed in
         future. Don't use -3, that's reserved for HBL. */

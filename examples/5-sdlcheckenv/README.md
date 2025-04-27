@@ -39,6 +39,4 @@ With SDL, we can no longer rely on console screen logging.  Instead, we will log
    - ex. ./UDP-Debug-Reader 
 
 2. Homebrew
-   - add some logging to homebrew ex WHBLogPrint("hello world");
-   - build homebrew with DEBUG flag. 
    - wiiload and test.
