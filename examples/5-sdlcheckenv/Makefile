@@ -46,7 +46,7 @@ LIBS	:=  -lwut
 LIBDIRS	:= $(PORTLIBS) $(WUT_ROOT)
 
 #---------------------------------------------------------------------------------
-# libraries #
+# SDL libraries
 #---------------------------------------------------------------------------------
 # Minimal libraries to check if your environement is configured
 PKGCONF			:=	$(DEVKITPRO)/portlibs/ppc/bin/powerpc-eabi-pkg-config
@@ -67,14 +67,12 @@ CXXFLAGS	+=	$(ROMFS_CFLAGS)
 LIBS		+=	$(ROMFS_LIBS)
 OFILES		+=	$(ROMFS_TARGET)
 
-
 #---------------------------------------------------------------------------------
 # Font instructions:
 # This example uses a TTF which the user must download from Google Fonts
 # Added this check so I don't need to commit the 150K font to github for a tutorial.
 #---------------------------------------------------------------------------------
-$(ROMFS)/Roboto-Regular.ttf:
-	if [ ! -f $@ ] ;then echo Download $@ and copy to romfs/res; exit 1; fi 
+$(info make sure you Download font and copy to "romfs/res/Roboto-Regular.ttf")
 
 #-------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional
