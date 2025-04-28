@@ -18,7 +18,7 @@ include $(DEVKITPRO)/wut/share/wut_rules
 # INCLUDES is a list of directories containing header files
 #-------------------------------------------------------------------------------
 
-TARGET		:=	sdlcheckenv
+TARGET		:=	sdlhelloworld
 BUILD		:= 	build
 SOURCES		:=	.
 INCLUDES	:=	.
