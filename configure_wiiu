@@ -10,15 +10,24 @@ if [ -z "$DEVKITPRO" -o -z "$DEVKITPPC" ]; then
   echo DEVKITPPC="$DEVKITPPC"
   exit 1
 fi
+
+FFMPEG_SOURCE=../ffmpeg
+if [ ! -d ../ffmpeg ]; then
+  echo Assume you extraced ffmpeg master to direcory "$FFMPEG_SOURCE"
+  echo but it is not found, exiting
+  exit 1
+fi
 export WUT_ROOT=$DEVKITPRO/wut
   
 export PATH=$DEVKITPPC/bin:$PATH
 export ARCH="-mcpu=750 -meabi -mhard-float"
 export CFLAGS="-fomit-frame-pointer -ffast-math -fno-math-errno -funsafe-math-optimizations -ffinite-math-only -fno-trapping-math -O3 -Ofast"
 
-./configure --prefix=$DEVKITPRO/portlibs/ppc/ \
+do_configure() {
+./configure --prefix=$DEVKITPRO/portlibs/wiiu/ \
 --enable-cross-compile \
 --cross-prefix=$DEVKITPPC/bin/powerpc-eabi- \
+--pkgconfigdir=$DEVKITPRO/portlibs/wiiu/lib/pkgconfig \
 --disable-shared \
 --disable-runtime-cpudetect \
 --disable-programs \
@@ -44,3 +53,6 @@ export CFLAGS="-fomit-frame-pointer -ffast-math -fno-math-errno -funsafe-math-op
 --disable-securetransport \
 --disable-xlib \
 --disable-zlib  
+}
+
+(cd $FFMPEG_SOURCE; do_configure; make; make install)

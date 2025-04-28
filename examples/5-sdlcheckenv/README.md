@@ -8,7 +8,7 @@ Dependencies amd build tools change over time.  Many code samples online get out
 At the time of writing, there are required dependencies.
 
 1. libromfs-wiiu
-  -  Google search "libromfs-wiiu"
+  - Google search "libromfs-wiiu"
   - download the zip file and extract to the same top directory where fmpeg and this ffmpeg-wiiu workspace are.
      - the top level directory should look like this
      - ffmpeg/
@@ -36,7 +36,8 @@ With SDL, we can no longer rely on console screen logging.  Instead, we will log
    - ex. docker exec -it ffmpeg-wiiu /bin/bash
    - follow build intructions on the github for Linux
    - Run and watch output
-   - ex. ./UDP-Debug-Reader 
+   -  ex. open a termal on your desktop
+   -  run netcat  "nc -ul 4402" or /opt/devkitpro/tools/bin/udplogserver
 
-2. Homebrew
-   - wiiload and test.
+2. Test Homebrew
+   - wiiload <this app>.rpx  and test.

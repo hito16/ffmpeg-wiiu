@@ -14,12 +14,19 @@ int main(int argc, char** argv) {
     romfsInit();
     SDL_Init(SDL_INIT_EVERYTHING);
 
+    // Create a window
+    SDL_Window* window =
+        SDL_CreateWindow("Simple SDL Window", SDL_WINDOWPOS_UNDEFINED,
+                         SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_SHOWN);
+
     // WHBProcInit();
     WHBLogUdpInit();
+    WHBLogPrint("Simple SDL Window. Logging initialised.");
 
     TTF_Init();
     // downloaded google font and placed in ./romfs/res
     font = TTF_OpenFont("romfs:/res/Roboto-Regular.ttf", 28);
+
     while (WHBProcIsRunning()) {
         /*You should get past the white WIIU loading screen
           and see a black screen.
@@ -29,6 +36,7 @@ int main(int argc, char** argv) {
     }
     WHBProcShutdown();
 
+    SDL_DestroyWindow(window);
     SDL_Quit();
     romfsExit();
 
