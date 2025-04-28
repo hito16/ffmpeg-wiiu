@@ -1,8 +1,18 @@
 /* An SDL WiiU "Hello World" example
    Assumes you built romfs-wiiu and downloaded fonts
 
-   The is the last example of us being explicit and pedantic, ie close
-   to SDL tutorials. 
+   This example is intentionally explicit and pedantic, ie close
+   to SDL tutorials.
+
+   Take a quick look and see if you can spot the differences between
+   vanilla crossplatform SDL code and what we added/revmoved from
+   the other WiiU homebrew code we've seen (eg the main loop).
+   The WiiU SDL wrappers are so good, we were almost able to run this
+   crossplatform example as is.
+
+   Notice the state of logging:  Before loading this app,
+   open a terminal and type nc -ul 4405.  Watch for UDP messages
+   from this app.  How many arrived and were displayed?
 */
 #include <SDL.h>
 #include <SDL_ttf.h>
@@ -12,7 +22,6 @@
 
 int main(int argc, char** argv) {
     WHBLogUdpInit();
-
     romfsInit();
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -68,9 +77,9 @@ int main(int argc, char** argv) {
         SDL_Quit();
         return 1;
     }
-    // Downloaded google font and placed in ./romfs/res
-    // Built into the rpx along with the romfs image
-    // Mounted under romfs:/
+    // Download Google Font and place in ./romfs/res
+    // Build font file into the rpx along with the romfs image
+    // Mount under romfs:/
     TTF_Font* font = TTF_OpenFont("romfs:/res/Roboto-Regular.ttf", 28);
     if (font == NULL) {
         WHBLogPrintf("Font loading failed: %s\n", TTF_GetError());
