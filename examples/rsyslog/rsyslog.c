@@ -57,7 +57,7 @@ int rsyslog_send_tcp(const char *syslog_server_ip, int port, int priority,
         return 1;
     }
 
-    printf("Sent to %s: %s\n", syslog_server_ip, syslog_msg);
+    //printf("Sent to %s: %s\n", syslog_server_ip, syslog_msg);
 
     close(sockfd);
     return 0;

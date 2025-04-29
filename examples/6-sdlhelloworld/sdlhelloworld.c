@@ -20,7 +20,7 @@
 #include <whb/log.h>
 #include <whb/log_udp.h>
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     WHBLogUdpInit();
     romfsInit();
 
@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
     }
 
     // Create a window
-    SDL_Window* window =
+    SDL_Window *window =
         SDL_CreateWindow("Simple SDL Window", SDL_WINDOWPOS_UNDEFINED,
                          SDL_WINDOWPOS_UNDEFINED, 854, 480, SDL_WINDOW_SHOWN);
 
@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
     }
 
     // Create a renderer
-    SDL_Renderer* renderer =
+    SDL_Renderer *renderer =
         SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (renderer == NULL) {
         WHBLogPrintf("Renderer creation failed: %s\n", SDL_GetError());
@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
     // Download Google Font and place in ./romfs/res
     // Build font file into the rpx along with the romfs image
     // Mount under romfs:/
-    TTF_Font* font = TTF_OpenFont("romfs:/res/Roboto-Regular.ttf", 28);
+    TTF_Font *font = TTF_OpenFont("romfs:/res/Roboto-Regular.ttf", 28);
     if (font == NULL) {
         WHBLogPrintf("Font loading failed: %s\n", TTF_GetError());
         SDL_DestroyRenderer(renderer);
@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
 
     // Create a surface containing the text "Hello, World!"
     SDL_Color text_color = {0, 0, 0, 255};  // Black color
-    SDL_Surface* text_surface =
+    SDL_Surface *text_surface =
         TTF_RenderText_Solid(font, "Hello, World!", text_color);
     if (text_surface == NULL) {
         WHBLogPrintf("Text rendering failed: %s\n", TTF_GetError());
@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
     }
 
     // Create a texture from the surface
-    SDL_Texture* text_texture =
+    SDL_Texture *text_texture =
         SDL_CreateTextureFromSurface(renderer, text_surface);
     if (text_texture == NULL) {
         WHBLogPrintf("Texture creation failed: %s\n", SDL_GetError());

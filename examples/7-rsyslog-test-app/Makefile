@@ -7,6 +7,8 @@ $(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>/de
 endif
 
 TOPDIR ?= $(CURDIR)
+SYSLOG_SERVER ?= "192.168.0.93"
+$(info SYSLOG_SERVER is $(SYSLOG_SERVER))
 
 include $(DEVKITPRO)/wut/share/wut_rules
 
@@ -18,7 +20,7 @@ include $(DEVKITPRO)/wut/share/wut_rules
 # INCLUDES is a list of directories containing header files
 #-------------------------------------------------------------------------------
 
-TARGET		:=	rsyslogtest
+TARGET		:=	rsyslog-test-app
 BUILD		:= 	build
 SOURCES		:=	. \
 				../rsyslog
@@ -32,7 +34,8 @@ INCLUDES	:=	. \
 CFLAGS	:=	-O3 -ffunction-sections -fdata-sections \
 			$(MACHDEP)
 
-CFLAGS	+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -DBIGENDIAN -DUSE_MBEDTLS
+CFLAGS	+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -DBIGENDIAN -DUSE_MBEDTLS \
+			-DSYSLOG_SERVER="\"$(SYSLOG_SERVER)\""
 
 CXXFLAGS	:= $(CFLAGS)
 
