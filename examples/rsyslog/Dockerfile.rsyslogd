@@ -1,0 +1,36 @@
+FROM ubuntu:latest
+
+RUN apt-get update && apt-get install -y rsyslog
+
+# Generate rsyslog.conf using a HERE document
+RUN cat <<EOF > /tmp/rsyslog.conf
+# Minimal rsyslog configuration to receive remote logs on port 9514
+# provides UDP syslog reception
+#
+module(load="imudp")
+input(type="imudp" port="9514")
+
+# provides TCP syslog reception
+module(load="imtcp")
+input(type="imtcp" port="9514") 
+
+
+#\$template MyMessageLog, "/var/log/messages"
+# Log all received messages to a file, creating subdirectories based on the client IP
+\$template RemoteLogs,"/var/log/remote/%fromhost-ip%.log"
+*.* ?RemoteLogs
+EOF
+
+RUN mkdir -p /var/log/remote
+
+RUN chown syslog:syslog /var/log/remote
+
+RUN cp /tmp/rsyslog.conf /etc/rsyslog.conf
+
+CMD ["rsyslogd", "-n", "-f", "/etc/rsyslog.conf"]
+
+# Expose the custom syslog port
+EXPOSE 9514/udp 
+EXPOSE 9514/tcp
+
+VOLUME /var/log/remote # Make the log directory a volume for persistence
