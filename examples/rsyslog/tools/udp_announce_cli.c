@@ -6,7 +6,6 @@
 int main(int argc, char *argv[]) {
     // our rsyslogd is running on 9514, so we'll start our daemon on +1
     int port = 9515;
-
     char server_ip_buffer[17];
     int i = 0;
     int res = -1;

@@ -1,6 +1,11 @@
 FROM ubuntu:latest
 
-RUN apt-get update && apt-get install -y rsyslog
+RUN apt-get update 
+
+# syslog ports
+EXPOSE 9514/udp 
+EXPOSE 9514/tcp
+RUN apt-get install -y rsyslog
 
 # Generate rsyslog.conf using a HERE document
 RUN cat <<EOF > /tmp/rsyslog.conf
@@ -20,17 +25,31 @@ input(type="imtcp" port="9514")
 \$template RemoteLogs,"/var/log/remote/%fromhost-ip%.log"
 *.* ?RemoteLogs
 EOF
-
-RUN mkdir -p /var/log/remote
-
-RUN chown syslog:syslog /var/log/remote
-
 RUN cp /tmp/rsyslog.conf /etc/rsyslog.conf
 
-CMD ["rsyslogd", "-n", "-f", "/etc/rsyslog.conf"]
-
-# Expose the custom syslog port
-EXPOSE 9514/udp 
-EXPOSE 9514/tcp
+RUN mkdir -p /var/log/remote
+RUN chown syslog:syslog /var/log/remote
+#CMD ["rsyslogd", "-n", "-f", "/etc/rsyslog.conf"]
 
 VOLUME /var/log/remote # Make the log directory a volume for persistence
+
+# udp_acknowledge_svc  port
+EXPOSE 9515/udp 
+RUN apt-get install -y gcc make
+
+COPY . /app/source/
+RUN cat <<EOF > /app/source/run_svcs.sh
+#!/bin/bash
+
+cd /app/source
+make clean
+make
+
+nohup /app/source/udp_acknowledge_svc > /tmp/udp_acknowledge_svc.log &
+
+rsyslogd -n -f /etc/rsyslog.conf
+EOF
+
+RUN chmod +x /app/source/run_svcs.sh
+
+CMD ["/app/source/run_svcs.sh"]

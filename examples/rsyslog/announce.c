@@ -24,7 +24,7 @@ int client_announce(char *server_ip_buffer, int server_port) {
     int sockfd;
     struct sockaddr_in server_addr;
     char buffer[BUFFER_SIZE];
-    const char *message = "Hello, Broadcast Server! Please send your IP.";
+    const char *message = "Hello, Any Servers? Please send your IP.";
     int broadcastEnable = 1;
 
     // Create socket
@@ -131,10 +131,8 @@ int server_acknowledge(int server_port) {
         inet_ntop(AF_INET, &server_addr.sin_addr, server_ip_str,
                   INET_ADDRSTRLEN);
         char response[BUFFER_SIZE];
-        snprintf(
-            response, BUFFER_SIZE,
-            "Hello, Client! My IP is in this packet");  // snprintf to prevent
-                                                        // buffer overflows.
+        snprintf(response, BUFFER_SIZE,
+                 "Hello, Broadcasting Client! My IP is in this packet");
 
         if (sendto(sockfd, response, strlen(response), 0,
                    (struct sockaddr *)&client_addr, client_len) < 0) {
