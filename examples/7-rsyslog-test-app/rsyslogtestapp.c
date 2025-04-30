@@ -14,20 +14,20 @@ container.
 #include <coreinit/thread.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/iosupport.h>  // devoptab_list, devoptab_t
 #include <whb/log.h>
 #include <whb/log_console.h>
 #include <whb/proc.h>
 
+#include "announce.h"
 #include "rsyslog.h"
+
+static char SYSLOG_IP[18];
 
 /* Force a draw immediately after WHBLogPrintf
    Nothing will be written to the screen without WHBLogConsoleDraw
 */
-
-#ifndef SYSLOG_SERVER
-#define SYSLOG_SERVER "\"UNDEFINED\""
-#endif
 
 int WHBLogPrintfDraw(const char *format, ...) {
     va_list args;
@@ -38,13 +38,26 @@ int WHBLogPrintfDraw(const char *format, ...) {
     return result;
 }
 
+int find_syslog_ip(char *server_ip_buffer) {
+    int port = 9515;
+    int i = 0;
+    int res = -1;
+    for (int i = 0; i < 10; i++) {
+        res = client_announce(server_ip_buffer, port);
+        if (res == 0) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 /*  We use this to pass output from stdout/stderr to our syslog function */
 static ssize_t write_msg_to_syslog(struct _reent *r, void *fd, const char *ptr,
                                    size_t len) {
     char buffer[1024];
 
     snprintf(buffer, 1024, "%*.*s", len, len, ptr);
-    rsyslog_send_tcp(SYSLOG_SERVER, 9514, 14, buffer);
+    rsyslog_send_tcp(SYSLOG_IP, 9514, 14, buffer);
     return len;
 }
 
@@ -54,6 +67,7 @@ void init_stdout() {
     dev.name = "STDOUT";
     dev.structSize = sizeof dev;
     dev.write_r = &write_msg_to_syslog;
+
     devoptab_list[STD_OUT] = &dev;
     devoptab_list[STD_ERR] = &dev;
 }
@@ -64,25 +78,38 @@ int main(int argc, char **argv) {
     /*  Use the Console backend for WHBLog - this one draws text with OSScreen
         Don't mix with other graphics code! */
     WHBLogConsoleInit();
-    const char *syslog_server = SYSLOG_SERVER;
-    WHBLogPrintfDraw("== Starting rsyslog test [%s]", syslog_server);
+
+    // initialize logging - find syslog ip address
+    char server_ip_buffer[18];
+    if (find_syslog_ip(server_ip_buffer) == 0) {
+        WHBLogPrintfDraw("Found syslog IP %s", server_ip_buffer);
+        strncpy(SYSLOG_IP, server_ip_buffer, 17);
+    } else {
+        WHBLogPrintfDraw("No IP found, Shutting Down...");
+        OSSleepTicks(OSMillisecondsToTicks(5000));
+        WHBLogConsoleFree();
+        WHBProcShutdown();
+    }
+
+    WHBLogPrintfDraw("== Starting rsyslog test [%s]...", server_ip_buffer);
 
     int times_left = 5;
     while (WHBProcIsRunning() && times_left > 0) {
         WHBLogPrintfDraw("== Logging with rsyslog_send_tcp");
-        rsyslog_send_tcp(SYSLOG_SERVER, 9514, 14,
+
+        rsyslog_send_tcp(server_ip_buffer, 9514, 14,
                          "Wrote from  rsyslog_send_tcp()");
         times_left--;
         WHBLogPrintf("== done. Running again (attempts = %d)", times_left);
         WHBLogPrintfDraw("");
-        OSSleepTicks(OSMillisecondsToTicks(8000));
+        OSSleepTicks(OSMillisecondsToTicks(5000));
     }
 
     /*  The big test.  Where does printf() go??  */
     init_stdout();
     times_left = 5;
     while (WHBProcIsRunning() && times_left > 0) {
-        WHBLogPrintfDraw("== Logging with rsyslog_send_tcp");
+        WHBLogPrintfDraw("== Logging with printf...");
         printf("Wrote from printf() -  %d\n", times_left);
         fprintf(stdout, "fprintf(stdout, ...) %d\n", times_left);
         fprintf(stderr, "fprintf(stderr, ...) %d\n", times_left);

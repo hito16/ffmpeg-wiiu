@@ -34,11 +34,13 @@ int client_announce(char *server_ip_buffer, int server_port) {
         return 1;
     }
 
+    /* TBD - figure out if SO_RCVTIMEO exists within wiiU homebrew
     struct timeval read_timeout;
     read_timeout.tv_sec = 1;
     read_timeout.tv_usec = 0;
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &read_timeout,
                sizeof read_timeout);
+    */
 
     // Set socket option for broadcasting
     if (setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, &broadcastEnable,

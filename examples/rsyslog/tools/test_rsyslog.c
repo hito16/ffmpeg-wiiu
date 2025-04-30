@@ -3,7 +3,7 @@
 #include "rsyslog.h"
 #include "announce.h"
 
-int find_client_ip(char *server_ip_buffer) {
+int find_syslog_ip(char *server_ip_buffer) {
     int port = 9515;
     int i = 0;
     int res = -1;
@@ -39,7 +39,7 @@ int main() {
 
     // Discover the IP
     char server_ip_buffer[17];
-    int res = find_client_ip(server_ip_buffer);
+    int res = find_syslog_ip(server_ip_buffer);
     if (res == 0) {
         printf("Discovered Server IP %s\n", server_ip_buffer);
         message = "3 We discovered your IP on our own";

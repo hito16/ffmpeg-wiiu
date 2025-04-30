@@ -11,7 +11,7 @@
  # download latest ffmpeg source zip an extract to folder "ffmpeg"
  git clone https://github.com/hito16/ffmpeg-wiiu.git ffmpeg-wiiu
  docker build -t ffmpeg-wiiu ffmpeg-wiiu
- docker run -it --rm -v ${PWD}:/project ffmpeg-wiiu /bin/bash
+ docker run -it --rm -v ${PWD}:/project --name ffmpeg-wiiu ffmpeg-wiiu /bin/bash
 ```
 
  once in the container
