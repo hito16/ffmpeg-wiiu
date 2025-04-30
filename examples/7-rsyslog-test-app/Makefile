@@ -24,8 +24,12 @@ TARGET		:=	rsyslog-test-app
 BUILD		:= 	build
 SOURCES		:=	. \
 				../rsyslog
+
+SOURCE_FILES	:=	../example-util/rsyslog-wiiu.c
+
 INCLUDES	:=	. \
-				../rsyslog
+				../rsyslog \
+				../example-util 
 
 #-------------------------------------------------------------------------------
 # options for code generation
