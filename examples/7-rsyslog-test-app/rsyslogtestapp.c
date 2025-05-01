@@ -1,26 +1,25 @@
 /* An example of headless logging with some added realiablity and ease of use.
 
-rsyslog function logs TCP messages to a syslogd server running in a Docker
-container.
+UDP logging is lacking.  The best way to debug requires buying a special USB
+cable.
 
-  1. Per README.md, start the Dockerfile.rsyslogd and
-  2. make SYSLOG_IP=<the ip syslogd is running on>
-     ex. make SYSLOG_SERVER=192.168.0.97
-  3. wiiload <this file>.rpx
-  4. Per README.md, open a termial to the docker instance and tail the generated
-     output.
+As a middle ground, we add a rsyslog hook that redirects stdout  to a
+rsyslogd TCP server running in a supplied Docker container.
+
+  1. Per ../rsyslog/README.md, start the Dockerfile.rsyslogd and
+  2. wiiload <this file>.rpx
+  4. Per ./rsyslog/README.md, open a termial to the docker instance and tail the
+generated output.
  */
 
 #include <coreinit/thread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/iosupport.h>  // devoptab_list, devoptab_t
 #include <whb/log.h>
 #include <whb/log_console.h>
 #include <whb/proc.h>
 
-#include "announce.h"
 #include "rsyslog-wiiu.h"
 #include "rsyslog.h"
 
