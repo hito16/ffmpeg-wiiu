@@ -10,8 +10,10 @@
 #include <romfs-wiiu.h>
 #include <sysapp/launch.h>
 
+#ifdef DEBUG
 #include "rsyslog-wiiu.h"
 #include "rsyslog.h"
+#endif  // DEBUG
 
 const char* RES_ROOT = "romfs:/res/";  // fonts, images, etc.
 #else
@@ -24,16 +26,20 @@ const char* RES_ROOT = "./romfs/res/";
 int main(int argc, char** argv) {
 #ifdef __WIIU__
     romfsInit();  // a romfs mount with fonts, images etc. on the WiiU
+    printf("initialized romfs");
+#ifdef DEBUG
     if (init_rsyslogger() != 0) {
         // setup udp or cafe logging
     }
-#endif
+#endif  // DEBUG
+#endif  // __WIIU__
+
     printf("starting main\n");
     // Call your SDL routine here.
-    // For example, take an existing SDL example with a main(),
-    // rename the SDL example main() to sdl_main(), and call
-    // sdl_main() here.
+
     sdltriangle_main();
+    sdlanimate_main();
+
     printf("exiting main\n");
     return 0;
 }

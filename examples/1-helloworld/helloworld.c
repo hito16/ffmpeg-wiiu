@@ -2,31 +2,29 @@
 //   added timer from helloworld.c from wut/samples
 //   to avoid screen flicker
 
-#include <stdint.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <malloc.h>
-
 #include <coreinit/cache.h>
 #include <coreinit/screen.h>
 #include <coreinit/thread.h>
 #include <coreinit/time.h>
+#include <malloc.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <whb/log.h>
 #include <whb/log_cafe.h>
 #include <whb/log_udp.h>
 #include <whb/proc.h>
 
-int main(int argc, char **argv)
-{
-    /*  Init logging. We log both to Cafe's internal logger (shows up in Decaf, some
-        crash logs) and over UDP to be received with udplogserver. */
+int main(int argc, char **argv) {
+    /*  Init logging. We log both to Cafe's internal logger (shows up in Decaf,
+       some crash logs) and over UDP to be received with udplogserver. */
     WHBLogCafeInit();
     WHBLogUdpInit();
     /*  WHBLogPrint and WHBLogPrintf add new line characters for you */
     WHBLogPrint("Hello World! Logging initialised.");
 
-    /*  Init WHB's ProcUI wrapper. This will manage all the little Cafe OS bits and
-        pieces for us - home menu overlay, power saving features, etc. */
+    /*  Init WHB's ProcUI wrapper. This will manage all the little Cafe OS bits
+       and pieces for us - home menu overlay, power saving features, etc. */
     WHBProcInit();
 
     /*  Init OSScreen. This is the really simple graphics API we'll be using to
@@ -38,24 +36,22 @@ int main(int argc, char **argv)
 
     size_t tvBufferSize = OSScreenGetBufferSizeEx(SCREEN_TV);
     size_t drcBufferSize = OSScreenGetBufferSizeEx(SCREEN_DRC);
-    WHBLogPrintf("Will allocate 0x%X bytes for the TV, "
-                 "and 0x%X bytes for the DRC.",
-                 tvBufferSize, drcBufferSize);
+    WHBLogPrintf(
+        "Will allocate 0x%X bytes for the TV, "
+        "and 0x%X bytes for the DRC.",
+        tvBufferSize, drcBufferSize);
 
-    /*  Try to allocate an area for the buffers. According to OSScreenSetBufferEx's
-        documentation, these need to be 0x100 aligned. */
+    /*  Try to allocate an area for the buffers. According to
+       OSScreenSetBufferEx's documentation, these need to be 0x100 aligned. */
     void *tvBuffer = memalign(0x100, tvBufferSize);
     void *drcBuffer = memalign(0x100, drcBufferSize);
 
     /*  Make sure the allocation actually succeeded! */
 
-    if (!tvBuffer || !drcBuffer)
-    {
+    if (!tvBuffer || !drcBuffer) {
         WHBLogPrint("Out of memory!");
         // skip to deallocation and teardown
-    }
-    else
-    {
+    } else {
         /*  Buffers are all good, set them */
         OSScreenSetBufferEx(SCREEN_TV, tvBuffer);
         OSScreenSetBufferEx(SCREEN_DRC, drcBuffer);
@@ -67,11 +63,10 @@ int main(int argc, char **argv)
         OSCalendarTime tm;
         char tm_buffer[128];
 
-        /*  WHBProcIsRunning will return false if the OS asks us to quit, so it's a
-            good candidate for a loop */
+        /*  WHBProcIsRunning will return false if the OS asks us to quit, so
+           it's a good candidate for a loop */
 
-        while (WHBProcIsRunning())
-        {
+        while (WHBProcIsRunning()) {
             OSTicksToCalendarTime(OSGetTime(), &tm);
 
             /*  Clear each buffer - the 0x... is an RGBX colour */
@@ -81,10 +76,12 @@ int main(int argc, char **argv)
             /*  Print some text. Coordinates are (columns, rows). */
             OSScreenPutFontEx(SCREEN_TV, 0, 0, "Hello world! This is the TV.");
             OSScreenPutFontEx(SCREEN_TV, 0, 1, "Neat, right?");
-            sprintf(tm_buffer, "time %2d:%2d:%2d", tm.tm_hour, tm.tm_min, tm.tm_sec);
+            sprintf(tm_buffer, "time %2d:%2d:%2d", tm.tm_hour, tm.tm_min,
+                    tm.tm_sec);
             OSScreenPutFontEx(SCREEN_TV, 0, 2, tm_buffer);
 
-            OSScreenPutFontEx(SCREEN_DRC, 0, 0, "Hello world! This is the DRC.");
+            OSScreenPutFontEx(SCREEN_DRC, 0, 0,
+                              "Hello world! This is the DRC.");
             OSScreenPutFontEx(SCREEN_DRC, 0, 1, "Neat, right?");
             OSScreenPutFontEx(SCREEN_DRC, 0, 2, tm_buffer);
 
@@ -105,10 +102,8 @@ int main(int argc, char **argv)
 
     /*  It's vital to free everything - under certain circumstances, your memory
         allocations can stay allocated even after you quit. */
-    if (tvBuffer)
-        free(tvBuffer);
-    if (drcBuffer)
-        free(drcBuffer);
+    if (tvBuffer) free(tvBuffer);
+    if (drcBuffer) free(drcBuffer);
 
     /*  Deinit everything */
     OSScreenShutdown();

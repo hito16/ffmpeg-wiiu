@@ -75,8 +75,8 @@ int sdltriangle_main() {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
                 quit = SDL_TRUE;
-                // WIIU code change 3c.
-                // Add controller events so we can exit on any button push
+    // WIIU code change 3c.
+    // Add controller events so we can exit on any button push
             } else if (e.type == SDL_CONTROLLERBUTTONDOWN) {
                 quit = SDL_TRUE;
                 printf("SDL_PollEvent revd SDL_CONTROLLERBUTTONDOWN\n");

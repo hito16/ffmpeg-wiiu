@@ -57,9 +57,9 @@ LIBDIRS	:= $(PORTLIBS) $(WUT_ROOT)
 # Minimal libraries to check if your environement is configured
 PKGCONF			:=	$(DEVKITPRO)/portlibs/ppc/bin/powerpc-eabi-pkg-config
 PKGCONF_WIIU	:=	$(DEVKITPRO)/portlibs/wiiu/bin/powerpc-eabi-pkg-config
-CFLAGS		+=	$(shell $(PKGCONF_WIIU) --cflags SDL2_ttf sdl2)
-CXXFLAGS	+=	$(shell $(PKGCONF_WIIU) --cflags SDL2_ttf sdl2)
-LIBS		+=	$(shell $(PKGCONF_WIIU) --libs SDL2_ttf sdl2) \
+CFLAGS		+=	$(shell $(PKGCONF_WIIU) --cflags SDL2_image SDL2_ttf sdl2)
+CXXFLAGS	+=	$(shell $(PKGCONF_WIIU) --cflags SDL2_image SDL2_ttf sdl2)
+LIBS		+=	$(shell $(PKGCONF_WIIU) --libs SDL2_image SDL2_ttf sdl2) \
 				$(shell $(PKGCONF) --libs harfbuzz freetype2)
 
 #---------------------------------------------------------------------------------

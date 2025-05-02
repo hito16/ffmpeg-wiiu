@@ -2,13 +2,17 @@ FROM ubuntu:latest
 
 RUN apt-get update 
 
+
+
+### BEGIN section rsyslog 
 # syslog ports
 EXPOSE 9514/udp 
 EXPOSE 9514/tcp
 RUN apt-get install -y rsyslog tzdata
 ENV TZ=America/Los_Angeles
 
-# Generate rsyslog.conf using a HERE document
+
+# ---- file start: rsyslog.conf
 RUN cat <<EOF > /tmp/rsyslog.conf
 # Minimal rsyslog configuration to receive remote logs on port 9514
 # provides UDP syslog reception
@@ -26,19 +30,21 @@ input(type="imtcp" port="9514")
 \$template RemoteLogs,"/var/log/remote/%fromhost-ip%.log"
 *.* ?RemoteLogs
 EOF
+# ---- file end: rsyslog.conf
 RUN cp /tmp/rsyslog.conf /etc/rsyslog.conf
 
 RUN mkdir -p /var/log/remote
 RUN chown syslog:syslog /var/log/remote
-#CMD ["rsyslogd", "-n", "-f", "/etc/rsyslog.conf"]
+VOLUME /var/log/remote 
 
-VOLUME /var/log/remote # Make the log directory a volume for persistence
 
-# udp_acknowledge_svc  port
+
+### BEGIN section  udp_acknowledge_svc, port 9515 
 EXPOSE 9515/udp 
 RUN apt-get install -y gcc make
 
 COPY . /app/source/
+# ---- files start: run_svcs.sh
 RUN cat <<EOF > /app/source/run_svcs.sh
 #!/bin/bash
 
@@ -50,6 +56,7 @@ nohup /app/source/udp_acknowledge_svc > /tmp/udp_acknowledge_svc.log &
 
 rsyslogd -n -f /etc/rsyslog.conf
 EOF
+# ---- file end: run_svcs.sh
 
 RUN chmod +x /app/source/run_svcs.sh
 
