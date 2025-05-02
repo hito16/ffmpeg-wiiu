@@ -18,4 +18,7 @@ FROM ghcr.io/wiiu-env/devkitppc:20241128
 # satisfy ffmpeg configure requirement
 RUN apt-get update && apt-get install -y gcc g++ make 
 
+# build libromfs if you downloaded the snapshot zip to libromfs-wiiu-master
+RUN [ -d libromfs-wiiu-master ] && ( cd libromfs-wiiu-master/; make clean; make; make install)
+
 WORKDIR /project

@@ -8,6 +8,7 @@
 
 #ifdef __WIIU__
 #include <romfs-wiiu.h>
+#include <sysapp/launch.h>
 
 #include "rsyslog-wiiu.h"
 #include "rsyslog.h"
@@ -16,6 +17,9 @@ const char* RES_ROOT = "romfs:/res/";  // fonts, images, etc.
 #else
 const char* RES_ROOT = "./romfs/res/";
 #endif
+#include <stdio.h>
+
+#include "sdlportables.h"
 
 int main(int argc, char** argv) {
 #ifdef __WIIU__
@@ -24,10 +28,12 @@ int main(int argc, char** argv) {
         // setup udp or cafe logging
     }
 #endif
-
+    printf("starting main\n");
     // Call your SDL routine here.
     // For example, take an existing SDL example with a main(),
     // rename the SDL example main() to sdl_main(), and call
     // sdl_main() here.
+    sdltriangle_main();
+    printf("exiting main\n");
     return 0;
 }

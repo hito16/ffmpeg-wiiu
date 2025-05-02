@@ -5,7 +5,8 @@ RUN apt-get update
 # syslog ports
 EXPOSE 9514/udp 
 EXPOSE 9514/tcp
-RUN apt-get install -y rsyslog
+RUN apt-get install -y rsyslog tzdata
+ENV TZ=America/Los_Angeles
 
 # Generate rsyslog.conf using a HERE document
 RUN cat <<EOF > /tmp/rsyslog.conf

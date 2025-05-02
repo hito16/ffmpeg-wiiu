@@ -15,8 +15,8 @@ There are are two parts to this,
 # Build the docker container
 docker build -t rsyslogd-wiiu-9514 -f Dockerfile.rsyslogd  .
 
-# Start the container in the back
-docker run -d --name rsyslogd-wiiu-9514  -p 9514:9514/tcp -p 9514:9514/udp -p 9515:9515/udp -v rsyslogd-wiiu-9514:/var/log/remote rsyslogd-wiiu-9514
+# Start the container in the background
+docker run -d --name rsyslogd-wiiu-9514 --hostname rsyslogd-wiiu-9514 -p 9514:9514/tcp -p 9514:9514/udp -p 9515:9515/udp -v rsyslogd-wiiu-9514:/var/log/remote rsyslogd-wiiu-9514
 
 # send a "remote" log line
 echo "<14>Test Syslog message" | nc  localhost 9514
