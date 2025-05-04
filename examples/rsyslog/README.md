@@ -9,6 +9,8 @@ There are are two parts to this,
    - simple libraries that write to rsyslogd over TCP.  Really this is just netcat
    - (optional) a simple UDP client libarary that sends a UDP broadcast, and captures the IP of the server response.
 
+![rsyslogd diagram](rsyslog-diag.png)
+
 ### Syslog Server
 
 ```
