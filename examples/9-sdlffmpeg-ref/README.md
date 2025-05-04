@@ -9,15 +9,13 @@ _Build out normal, clean, unadulterated code samples of ffmpeg and SDL on MacOS.
 
 This may be the last example I publish. Productivity is MUCH improved, but 
 now I need to learn more about the 3rd Party apis. ATM, when time allows,  
-I'm just playing with 3rd party APIs, learning through public cookbooks and
-example boiler plate code.
+I'm just playing with 3rd party APIs, learning by trying public cookbooks and
+ boiler plate examples code... All compiled and running on the Mac.
 
 At this point, these examples only compile and run on MacOS, but they should be
-able to run if I take away their main() call them from the "generic" SDL WiiU app stub.
-They either print status to the rsyslogd server and exit, or they Draw something.
+able to run on the WiiU.  I just need to rename their main() to something_main(), then call something_main() from the "generic" sdlmain.c WiiU app stub.
 
-A real testiment to all those who worked on devkitpro, WUT, SDL ports, Aroma, and 
-everything that lowered the barrier to entry.
+A real testiment to all those who worked on devkitpro, WUT, SDL ports, Aroma, and everything that lowered the barrier to entry.
 
 
 ## TODO

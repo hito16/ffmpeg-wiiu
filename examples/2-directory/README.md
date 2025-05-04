@@ -1,10 +1,8 @@
-# Week 1  directory 2025
+# Week 1: Posix api test - directory
 
-_Caveat: Don't treat these as "proper" examples.  I'm just showing what I did to get up to 
-speed with the library and environment.  Consider these as throwaway code snippets from a 
-newbie finding his way, but willing to share his stupid mistakes._
+_Caveat: Don't treat these as "proper" examples.  I'm just showing what I did to get up to speed with the homebrew environment.  Look at these, learn and avoid the same bruises_
 
-A lot of the homebrew tool chains look very posix-like.  How So?
+A lot of the homebrew tool chain look very posix-like.  How So?
 
 Let's try using file system checks, and see what we're allowed to view.
 Especially, where is the SD card mounted?

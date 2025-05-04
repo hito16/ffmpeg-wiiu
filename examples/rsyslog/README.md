@@ -7,7 +7,7 @@ There are are two parts to this,
    - (optional) a simple UDP service provides the IP of the rsyslog server
 * Syslog Client 
    - simple libraries that write to rsyslogd over TCP.  Really this is just netcat
-   - (optoinal) a simple UDP client libarary that sends a UDP broadcast, and captures the IP of the server response.
+   - (optional) a simple UDP client libarary that sends a UDP broadcast, and captures the IP of the server response.
 
 ### Syslog Server
 

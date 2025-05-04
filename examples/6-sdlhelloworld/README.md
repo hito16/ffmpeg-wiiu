@@ -1,10 +1,8 @@
-# Week 3 an actual SDL Hello world, that uses graphics to write on the screen
+# Week 3: an actual SDL Hello world
 
-_Caveat: Don't treat these as "proper" examples.  I'm just showing what I did to get up to 
-speed with the library and environment.  Consider these as throwaway code snippets from a 
-newbie finding his way, but willing to share his stupid mistakes._
+_Caveat: Don't treat these as "proper" examples.  I'm just showing what I did to get up to speed with the homebrew environment.  Look at these, learn and avoid the same bruises_
 
-From example 5-xxxx   We know our environment and Makefile is sane. 
+From example 5-sdlchekenv   We know our environment and Makefile is sane. 
 
 Take some boilerplate SDL code, compile it to the WiiU with as few changes as possible.
 
@@ -18,8 +16,8 @@ Build it, run it.
 they can run on the WiiU  basically unaltered.
 2. Key differences are 
  - ROMFS is needed for fonts/images,  (ifdef needed)
- - SDL headers includes look different than most examples (ifdef needed)
- - WiiU specific headers (#ifdef needed)
+ - SDL header includes look different than most examples (ifdef needed)
+ - WiiU adds specific headers (#ifdef out needed)
  - standard SDL Controller events need to be configured (next example)
 3. UDP logging is basically useless, but I have a plan...
 

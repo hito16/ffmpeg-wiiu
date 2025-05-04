@@ -2,17 +2,23 @@
 
 Me, with almost zero homebrew experience, cutting my teeth on the environment setup and porting, and leaving my notes behind for others.
 
+Pay attention to the "What I learned" at the bottom of each README.md for mistakes to avoid and lessons learned at each step.
+
 ### Skip to the good stuff?
 
-* 8-sdl-portable   - An bare bones example of a WiiU environment config paired with simple, ultra SDL portable code that compiles on MacOS and WiiU simultaneously.
- - as a person  with some experience in C/C++ on Unix but 0 experience in WiiU homebrew (or SDL), I wish "future me" could have shared this to me on day one.
-* 6-sdlhelloworld  - A true SDL Hello World Example. 
-* rsyslog - TCP logging.  Start up a rsyslogd server with 1 docker command. On client, redirect fprintf(stdout/stderr) to a remote syslog server with one function call.
+Of all the "examples", 3 are probably worth cleaning up and publishing separately.
 
+1. 8-sdl-portable   - A simple example that runs on both MacOS and WiiU
+   - If you have a bit of experience in Unix C/C++, but 0 experience in WiiU homebrew (or SDL), start here.
+2. 6-sdlhelloworld  - A true, minimal SDL Hello World Example. 
+3. rsyslog - TCP logging.  
+   - (1 docker command) Starts up a rsyslogd server
+   - (1 function call) Configures stdout/stderr redirection from the client to that remote syslog server.
 
 ### What are these example files for?
 
 To learn by doing. Specifically
+
 * Learn dev environment
 * [Done] Step up and get comfortable with a homebrew Dev environment,
 * [Done] make some WiiU basic apps, 

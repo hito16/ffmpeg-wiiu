@@ -1,8 +1,6 @@
-# Week 3 Back up and find a "Vanilla" minimal environment
-.
-_Caveat: Don't treat these as "proper" examples.  I'm just showing what I did to get up to 
-speed with the library and environment.  Consider these as throwaway code snippets from a 
-newbie finding his way, but willing to share his stupid mistakes._
+# Week 3: Back up.  Let's find a minimal "Vanilla" environment
+
+_Caveat: Don't treat these as "proper" examples.  I'm just showing what I did to get up to speed with the homebrew environment.  Look at these, learn and avoid the same bruises_
 
 A simple example to check the readiness of your environment before continuing.
 * learn where things are
