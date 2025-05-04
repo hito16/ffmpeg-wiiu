@@ -7,22 +7,36 @@ No. That's currently out of my skillset.
 ### What are these example files for?
 
 To learn by doing. Specifically
+* Learn dev environment
 * [Done] Step up and get comfortable with a homebrew Dev environment,
 * [Done] make some WiiU basic apps, 
 * [Done] update ffmepg_wiiu config script, and link with WiiU example code.
 * [Done] try some ffmpeg API for detection on WiiU
 * [Done] compare file system speed to ffmpeg decoding speed on WiiU
-* set up remote logging (udp, etc) and debugging, maybe Shipwright?
-* learn some WiiU UI code (sdl, imGui, etc), 
-* try some ffmpeg sdl player code samples on the WiiU
-* try out GX Texture Shaders, etc.  Needed for performance.
+* Learn applcation stuff - ideally portable apps first
+* [Done] set up remote logging (tcp, udp, etc) 
+* [Done] learn some basic WiiU UI code (sdl, etc), 
+* [Done] learn how to build "portable" apps that cross compile on both Mac and WiiU
+* [WIP]  try some ffmpeg sdl player code samples on the WiiU
+* try out GX Texture Shaders, etc.  Needed for performance unless SDL can do it.
 * learn queue systems used for decoder apps
 
-What I learn, I'll leave behind for others.
+What I learn, I'll take notes to leave behind for others.
 
 ### Things I've learned
 
 ##### Docker
+
+In general, you should use the Dockerfile, but start it from one directory above so you can access multiple
+different git repos.  Ex. after starting docker, your directory could look like
+
+/project/
+  ffmpeg/
+  ffmpeg-wiiu/
+    - Dockerfile
+  libromfs-wiiu-master/
+  ProgrammingOnTheWiiU/
+
 
 1. Install Docker Desktop for Windows or MacOS
 2. Clone this repo. (per top level readme)
@@ -35,6 +49,7 @@ PRETTY_NAME="Debian GNU/Linux 11 (bullseye)"
 ```
 
 ##### VSCode 
+
 
 1. Install VSCode
 2. Open up VSCode, update the C and Make extensions.

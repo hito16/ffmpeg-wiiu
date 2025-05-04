@@ -1,30 +1,28 @@
-# Week 3 Back up and find a "Vanilla" minimal environment
-.
+# Week 3 an actual SDL Hello world, that uses graphics to write on the screen
+
 _Caveat: Don't treat these as "proper" examples.  I'm just showing what I did to get up to 
 speed with the library and environment.  Consider these as throwaway code snippets from a 
 newbie finding his way, but willing to share his stupid mistakes._
 
-A simple example to check the readiness of your environment before continuing.
-* learn where things are
-* learn wut Make dependencies
-* try out UDP logging - you're about to lose access to reliable onscreen WHBPrintf() once we move to SDL graphics.
+From example 5-xxxx   We know our environment and Makefile is sane. 
 
-To save yourself an afternoon, first confirm this basic build works.
+Take some boilerplate SDL code, compile it to the WiiU with as few changes as possible.
+
 
 ## TODO
+Build it, run it.
 
-Follow instructions on dependencies below.  Build it.  Don't even need to run it.
-
-Success: The local WUT envionment and Makefile are not completely messed up.
-Failure: Something changed in the toolchain or environment.  Fix it before moving on.
 
 ## Things I learned
-1. Most WiiU SDL examples I tried pre 2021-ish don't compile.  There's some change in dependencies or API.
-2. The external deps like libromfs-wiiu work, but you need to check the latest instructions.  Adding pkgconfig could really improve
-integration with Makefile, CMake and autodeps.
-3. Logging is not fun.  In this example, I set up a UDP logging server.  This is good becuase it works out of the box, however it is lossy. 
-4. SDL Portlibs - somehow SDL is installed in a different directory than most header includes would expect. (SDL.h vs sdl/SDL.h)
-   - pkgconf saves the day.  Just eats up time figuring this out.
+1. SDL is very, very portable.  Internet code samples look like 
+they can run on the WiiU  basically unaltered.
+2. Key differences are 
+ - ROMFS is needed for fonts/images,  (ifdef needed)
+ - SDL headers includes look different than most examples (ifdef needed)
+ - WiiU specific headers (#ifdef needed)
+ - standard SDL Controller events need to be configured (next example)
+3. UDP logging is basically useless, but I have a plan...
+
 
 ### external deps
 At the time of writing, there are required dependencies.
