@@ -22,7 +22,7 @@ Reliable printf() logging that feels like a normal posix app logging to syslog.
 Easy setup with Docker, using services built into linux.
 Standard, hi perf, configurable logging server, with formatting options and UI integrations.
 
-* thanks to DanielKO and Serena for suggestion on TCP logging and pointers to redirecting stdout
+* thanks to DanielKO and TurtleP for suggestion on TCP logging and pointers to redirecting stdout
 
 ## TODO
 1. Look at the README.md in ../rsyslog for starting Dockerfile.rsyslog

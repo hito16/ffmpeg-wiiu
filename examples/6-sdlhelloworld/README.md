@@ -2,10 +2,9 @@
 
 _Caveat: Don't treat these as "proper" examples.  I'm just showing what I did to get up to speed with the homebrew environment.  Look at these, learn and avoid the same bruises_
 
-From example 5-sdlchekenv   We know our environment and Makefile is sane. 
+From example 5-sdlchekenv, we know our environment and Makefile is sane. 
 
 Take some boilerplate SDL code, compile it to the WiiU with as few changes as possible.
-
 
 ## TODO
 Build it, run it.

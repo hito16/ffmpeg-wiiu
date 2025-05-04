@@ -13,7 +13,7 @@ Below is a first proof of concept:  The only WiiU specific stuff is in
 a few small typedefs.  
 
 * thanks to vgmoose for clarifying SDL controller setup for the WiiU
-* thanks to DanielKO and Serena for pointers resolving the absence of printf() logging
+* thanks to DanielKO and TurtleP for pointers resolving the absence of easy printf() logging
 
 
 ## TODO

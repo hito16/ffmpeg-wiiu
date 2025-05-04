@@ -1,4 +1,4 @@
-# Week 3: Back up.  Let's find a minimal "Vanilla" environment
+# Week 3: Back up.  Let's find a minimal "Vanilla" environment 2025
 
 _Caveat: Don't treat these as "proper" examples.  I'm just showing what I did to get up to speed with the homebrew environment.  Look at these, learn and avoid the same bruises_
 
@@ -13,12 +13,13 @@ To save yourself an afternoon, first confirm this basic build works.
 
 Follow instructions on dependencies below.  Build it.  Don't even need to run it.
 
-Success: The local WUT envionment and Makefile are not completely messed up.
-Failure: Something changed in the toolchain or environment.  Fix it before moving on.
+Success: means my local WUT envionment and Makefile are not completely messed up.
+
+Failure: means something is off in the environment or the toolchain changed something.  Fix it before moving on.
 
 ## Things I learned
-1. Most WiiU SDL examples I tried pre 2021-ish don't compile.  There's some change in dependencies or API.
-2. The external deps like libromfs-wiiu work, but you need to check the latest instructions.  Adding pkgconfig could really improve
+1. **Most WiiU SDL examples I tried pre 2021-ish don't compile.  There's some change in dependencies or API.**
+2. The external deps like libromfs-wiiu moved around, but work with the latest instructions.  Adding pkgconfig could really improve
 integration with Makefile, CMake and autodeps.
 3. Logging is not fun.  In this example, I set up a UDP logging server.  This is good becuase it works out of the box, however it is lossy. 
 4. SDL Portlibs - somehow SDL is installed in a different directory than most header includes would expect. (SDL.h vs sdl/SDL.h)
