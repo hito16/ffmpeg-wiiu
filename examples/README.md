@@ -1,8 +1,14 @@
 ## Examples
 
-### Are you building media player?
+Me, with almost zero homebrew experience, cutting my teeth on the environment setup and porting, and leaving my notes behind for others.
 
-No. That's currently out of my skillset.
+### Skip to the good stuff?
+
+* 8-sdl-portable   - An bare bones example of a WiiU environment config paired with simple, ultra SDL portable code that compiles on MacOS and WiiU simultaneously.
+ - as a person  with some experience in C/C++ on Unix but 0 experience in WiiU homebrew (or SDL), I wish "future me" could have shared this to me on day one.
+* 6-sdlhelloworld  - A true SDL Hello World Example. 
+* rsyslog - TCP logging.  Start up a rsyslogd server with 1 docker command. On client, redirect fprintf(stdout/stderr) to a remote syslog server with one function call.
+
 
 ### What are these example files for?
 
