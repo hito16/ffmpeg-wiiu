@@ -7,7 +7,7 @@ Looking back, this is the Day 1 Hello World example that I wish "past me" had ac
 _Caveat: Don't treat these as "proper" examples.  I'm just showing what I did to get up to speed with the homebrew environment.  Look at these, learn and avoid the same bruises_
 
 
-A Bold Claim: Last example, I thought the environment was close enough that the same code could be developed on Mac and run on WiiU.  
+A Bold Claim: Last example, I thought the environment was standard enough, such that we can develop and run on the Mac first, then run on WiiU with no changes.  
 
 Below is a first proof of concept:  The only WiiU specific stuff is in
 a few small typedefs.  
@@ -27,5 +27,5 @@ On WiiU: Build it, run it.
 
 ## Things I learned
 1. I should start building and running examples on Mac first.
-2. Ideally, in the real of posix/SDL code, no WiiU specific code is required, beyond constants and #defines in headers.
+2. Ideally, for posix/SDL code, no WiiU specific code is required, beyond constants and #defines in headers.
 3. When building existing packages, keep them single threaded for now.
