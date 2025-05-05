@@ -7,7 +7,6 @@
 */
 
 #ifdef __WIIU__
-#include <romfs-wiiu.h>
 #include <sysapp/launch.h>
 
 #ifdef DEBUG
@@ -15,17 +14,17 @@
 #include "rsyslog.h"
 #endif  // DEBUG
 
-const char* RES_ROOT = "romfs:/res/";  // fonts, images, etc.
-#else
-const char* RES_ROOT = "./romfs/res/";
 #endif
 #include <stdio.h>
+#include <whb/log.h>
+#include <whb/log_console.h>
+#include <whb/proc.h>
 
+#include "exutil.h"
 #include "sdlportables.h"
 
 int main(int argc, char** argv) {
 #ifdef __WIIU__
-    romfsInit();  // a romfs mount with fonts, images etc. on the WiiU
     printf("initialized romfs");
 #ifdef DEBUG
     if (init_rsyslogger() != 0) {
@@ -34,12 +33,24 @@ int main(int argc, char** argv) {
 #endif  // DEBUG
 #endif  // __WIIU__
 
+    WHBProcInit();
+    WHBLogConsoleInit();
+    WHBLogPrintf("== Starting main");
+    WHBLogConsoleDraw();
+
     printf("starting main\n");
     // Call your SDL routine here.
+    char buffer[1024];
+    if (util_get_first_media_file(buffer, 1024) == 0) {
+        printf("found media file %s\n", buffer);
+        WHBLogPrintf("== loading %s", buffer);
+        WHBLogConsoleDraw();
+        ffmpeg_sync2_main(buffer);
+        // ffmpeg_decode4_main(buffer);
+    }
 
-    sdltriangle_main();
-    sdlanimate_main();
-
+    WHBLogConsoleFree();
+    WHBProcShutdown();
     printf("exiting main\n");
     return 0;
 }

@@ -13,7 +13,8 @@ TARGET = sdl-ffmpeg-videoonly-macos
 # Source file
 #SRC	=  sdl-display4.c
 #SRC	=  ffmpeg-decode5.c
-SRC	=  ffmpeg-sync2.c
+#SRC	=  ffmpeg-sync2.c
+SRC	=  sdlfilepicker4.c
 
 # Compiler
 CC = gcc
@@ -23,12 +24,14 @@ CFLAGS = -Wall -Werror -g
 
 # Linker flags
 
-PKGCONF_MAC	:= /opt/homebrew/bin/pkgconf
+#PKGCONF_MAC	:= /opt/homebrew/bin/pkgconf
+PKGCONF_MAC	:= /usr/local/bin/pkgconf
 # general order -lavformat -lavcodec -lavutil -lswresample -lswscale -lm -lz
 FFMPEG_CFLAGS = $(shell $(PKGCONF_MAC) --cflags libavformat libavcodec libavutil libswresample libswscale)
 FFMPEG_LDFLAGS = $(shell $(PKGCONF_MAC) --libs libavformat libavcodec libavutil libswresample libswscale)
-SDL_CFLAGS = $(shell $(PKGCONF_MAC) --cflags sdl2)
-SDL_LDFLAGS = $(shell $(PKGCONF_MAC) --libs sdl2)
+SDL_CFLAGS = $(shell $(PKGCONF_MAC) --cflags SDL2_ttf sdl2)
+SDL_LDFLAGS = $(shell $(PKGCONF_MAC) --libs SDL2_ttf sdl2) \
+              $(shell $(PKGCONF_MAC) --libs harfbuzz freetype2)
 
 # Combine CFLAGS and LDFLAGS
 CFLAGS += $(FFMPEG_CFLAGS) $(SDL_CFLAGS)

@@ -23,7 +23,8 @@ BUILD		:= 	build
 SOURCES		:=	. \
                              ../example-util
 INCLUDES	:=	. \
-                             ../example-util
+                             ../example-util \
+							 ../rsyslog
 
 #-------------------------------------------------------------------------------
 # options for code generation

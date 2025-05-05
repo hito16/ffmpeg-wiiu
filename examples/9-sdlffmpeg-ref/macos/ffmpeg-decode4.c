@@ -18,8 +18,7 @@ int open_file_and_find_stream(const char *input_file, FFmpegContext *ffctx) {
     avformat_network_init();
 
     // Open the input file
-    if (avformat_open_input(&ffctx->format_context, input_file, NULL, NULL) !=
-        0) {
+    if (avformat_open_input(&ffctx->format_context, input_file, NULL, NULL) != 0) {
         fprintf(stderr, "Could not open input file: %s\n", input_file);
         return -1;
     }
@@ -33,8 +32,7 @@ int open_file_and_find_stream(const char *input_file, FFmpegContext *ffctx) {
     // Find the video stream
     ffctx->video_stream_index = -1;
     for (int i = 0; i < ffctx->format_context->nb_streams; i++) {
-        if (ffctx->format_context->streams[i]->codecpar->codec_type ==
-            AVMEDIA_TYPE_VIDEO) {
+        if (ffctx->format_context->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
             ffctx->video_stream_index = i;
             break;
         }
@@ -50,14 +48,12 @@ int open_file_and_find_stream(const char *input_file, FFmpegContext *ffctx) {
 // Function to find the codec and open the codec context
 int find_and_open_codec(FFmpegContext *ffctx) {
     // Get the codec parameters for the video stream
-    AVCodecParameters *codec_params =
-        ffctx->format_context->streams[ffctx->video_stream_index]->codecpar;
+    AVCodecParameters *codec_params = ffctx->format_context->streams[ffctx->video_stream_index]->codecpar;
 
     // Find the decoder for the video stream
     const AVCodec *codec = avcodec_find_decoder(codec_params->codec_id);
     if (codec == NULL) {
-        fprintf(stderr, "Could not find a decoder for codec ID %d\n",
-                codec_params->codec_id);
+        fprintf(stderr, "Could not find a decoder for codec ID %d\n", codec_params->codec_id);
         return -1;
     }
 
@@ -123,20 +119,17 @@ void free_ffmpeg_resources(FFmpegContext *ffctx) {
 // Function to decode the video frame
 int decode_video_frame(FFmpegContext *ffctx) {
     int ret;
-    while ((ret = avcodec_receive_frame(ffctx->codec_context, ffctx->frame)) >=
-           0) {
+    while ((ret = avcodec_receive_frame(ffctx->codec_context, ffctx->frame)) >= 0) {
         if (ret == 0) {
             // A frame was successfully decoded! Do something with it.
-            printf("Decoded a frame!  Frame size: %d x %d\n",
-                   ffctx->frame->width, ffctx->frame->height);
-            av_frame_unref(ffctx->frame);  // VERY IMPORTANT
+            printf("Decoded a frame!  Frame size: %d x %d\n", ffctx->frame->width, ffctx->frame->height);
+            av_frame_unref(ffctx->frame); //VERY IMPORTANT
         } else if (ret == AVERROR(EAGAIN)) {
-            // Output is not available in this state; you must try to send new
-            // input
-            return 0;  // Return 0 to indicate that more data is needed
+            // Output is not available in this state; you must try to send new input
+            return 0; // Return 0 to indicate that more data is needed
         } else if (ret == AVERROR_EOF) {
             // The decoder has been flushed, and no more output.
-            return 1;  // Return 1 to indicate end of file
+            return 1; // Return 1 to indicate end of file
         } else {
             fprintf(stderr, "Error during decoding: %s\n", av_err2str(ret));
             return -1;
@@ -154,7 +147,7 @@ int read_packets_and_decode_video(FFmpegContext *ffctx) {
             if (avcodec_send_packet(ffctx->codec_context, ffctx->packet) < 0) {
                 fprintf(stderr, "Error sending packet to decoder\n");
                 av_packet_unref(ffctx->packet);
-                continue;  // IMPORTANT: Continue to next packet
+                continue; // IMPORTANT: Continue to next packet
             }
 
             // Decode video frame
@@ -174,9 +167,6 @@ int read_packets_and_decode_video(FFmpegContext *ffctx) {
     return 0;
 }
 
-#ifdef __WIIU__
-int ffmpeg_decode4_main(char *input_file) {
-#else
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <input_file>\n", argv[0]);
@@ -184,8 +174,7 @@ int main(int argc, char *argv[]) {
     }
 
     const char *input_file = argv[1];
-#endif
-    FFmpegContext ffctx = {0};  // Initialize all fields to NULL
+    FFmpegContext ffctx = {0}; // Initialize all fields to NULL
     int ret = 0;
 
     // 1. Open file and find stream
@@ -216,9 +205,11 @@ int main(int argc, char *argv[]) {
 
     // 5. Flush the decoder (send NULL packet to drain any remaining frames)
     avcodec_send_packet(ffctx.codec_context, NULL);
-    decode_video_frame(&ffctx);  // Decode any remaining frames
+    decode_video_frame(&ffctx); // Decode any remaining frames
 
     // 6. Clean up
     free_ffmpeg_resources(&ffctx);
     return 0;
 }
+
+

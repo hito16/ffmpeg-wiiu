@@ -23,7 +23,8 @@ BUILD		:= 	build
 SOURCES		:=	. \
 				../rsyslog
 
-SOURCE_FILES	:=	../example-util/rsyslog-wiiu.c
+SOURCE_FILES	:=	../example-util/rsyslog-wiiu.c \
+					../example-util/file.c
 
 INCLUDES	:=	. \
 				../rsyslog \
@@ -57,21 +58,25 @@ LIBDIRS	:= $(PORTLIBS) $(WUT_ROOT)
 # Minimal libraries to check if your environement is configured
 PKGCONF			:=	$(DEVKITPRO)/portlibs/ppc/bin/powerpc-eabi-pkg-config
 PKGCONF_WIIU	:=	$(DEVKITPRO)/portlibs/wiiu/bin/powerpc-eabi-pkg-config
-CFLAGS		+=	$(shell $(PKGCONF_WIIU) --cflags SDL2_image SDL2_ttf sdl2)
-CXXFLAGS	+=	$(shell $(PKGCONF_WIIU) --cflags SDL2_image SDL2_ttf sdl2)
-LIBS		+=	$(shell $(PKGCONF_WIIU) --libs SDL2_image SDL2_ttf sdl2) \
+FFMPEG_CFLAGS	:= $(shell $(PKGCONF_WIIU) --cflags libavformat libavcodec libavutil libswresample libswscale)
+FFMPEG_LDFLAGS	:= $(shell $(PKGCONF_WIIU) --libs libavformat libavcodec libavutil libswresample libswscale)
+SDL_CFLAGS	:= $(shell $(PKGCONF_WIIU) --cflags sdl2)
+SDL_LDFLAGS := $(shell $(PKGCONF_WIIU) --libs sdl2)
+CFLAGS		+=	$(FFMPEG_CPFLAGS) $(SDL_CFLAGS)
+CXXFLAGS	+=	$(FFMPEG_CPFLAGS) $(SDL_CFLAGS)
+LIBS		+=	$(FFMPEG_LDFLAGS) $(SDL_LDFLAGS) \
 				$(shell $(PKGCONF) --libs harfbuzz freetype2)
 
 #---------------------------------------------------------------------------------
 # romfs - make sure you download, build & do a make install per instructions
 #---------------------------------------------------------------------------------
 # fonts and images in ROMFS will packaged into a romfs and read by the homebrew app
-ROMFS		:= ./romfs
-include $(PORTLIBS_PATH)/wiiu/share/romfs-wiiu.mk
-CFLAGS		+=	$(ROMFS_CFLAGS)
-CXXFLAGS	+=	$(ROMFS_CFLAGS)
-LIBS		+=	$(ROMFS_LIBS)
-OFILES		+=	$(ROMFS_TARGET)
+#ROMFS		:= ./romfs
+#include $(PORTLIBS_PATH)/wiiu/share/romfs-wiiu.mk
+#CFLAGS		+=	$(ROMFS_CFLAGS)
+#CXXFLAGS	+=	$(ROMFS_CFLAGS)
+#LIBS		+=	$(ROMFS_LIBS)
+#OFILES		+=	$(ROMFS_TARGET)
 
 #-------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional

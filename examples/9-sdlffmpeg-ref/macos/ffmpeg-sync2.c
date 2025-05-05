@@ -14,12 +14,6 @@
 #include <libswresample/swresample.h>
 #include <libswscale/swscale.h>
 
-#ifdef __WIIU__
-#include <whb/log.h>
-#include <whb/log_console.h>
-#include <whb/proc.h>
-#endif
-
 // --- Application Context Structure ---
 typedef struct AppContext {
     AVFormatContext *fmt_ctx;
@@ -83,21 +77,14 @@ void playit(AppContext *ctx, AVFrame *video_frame_rgb,
     // --- THIS IS WHERE YOUR PLAYBACK/RENDERING LOGIC GOES ---
     // Example: Use SDL, OpenGL, PortAudio, etc.
 
-    // printf("playit: ");
-    int secx10_i = (int)(video_pts_sec * 10.0);
-
+    printf("playit: ");
     if (video_frame_rgb) {
         // Access RGB data via video_frame_rgb->data[0] and
         // video_frame_rgb->linesize[0] Dimensions: ctx->video_dec_ctx->width,
         // ctx->video_dec_ctx->height
-        if (secx10_i % 150 == 0) {
-            // printf("VID PTS: %8.3f sec | ", video_pts_sec);
-            printf("VID PTS: %8.3f sec \n", video_pts_sec);
-            WHBLogPrintf("VID PTS: %8.3f sec \n", video_pts_sec);
-            WHBLogConsoleDraw();
-        }
+        printf("VID PTS: %8.3f sec | ", video_pts_sec);
     } else {
-        // printf("VID PTS:    N/A    | ");
+        printf("VID PTS:    N/A    | ");
     }
 
     if (audio_frame_resampled) {
@@ -107,13 +94,13 @@ void playit(AppContext *ctx, AVFrame *video_frame_rgb,
         // audio_frame_resampled->sample_rate Channels:
         // audio_frame_resampled->ch_layout.nb_channels Samples per channel:
         // audio_frame_resampled->nb_samples
-        // printf("AUD PTS: %8.3f sec (%d samples @ %d Hz)", audio_pts_sec,
-        //       audio_frame_resampled->nb_samples,
-        //       audio_frame_resampled->sample_rate);
+        printf("AUD PTS: %8.3f sec (%d samples @ %d Hz)", audio_pts_sec,
+               audio_frame_resampled->nb_samples,
+               audio_frame_resampled->sample_rate);
     } else {
-        // printf("AUD PTS:    N/A");
+        printf("AUD PTS:    N/A");
     }
-    // printf("\n");
+    printf("\n");
 
     // --- Update Audio Clock (Simplified) ---
     // In a real player, the audio device callback provides a more accurate
@@ -528,8 +515,9 @@ int decode_and_process_frame(AppContext *ctx, AVPacket *pkt, int flushing) {
                     .nb_channels,  // Number of channels from target frame
                                    // layout
                 max_out_samples,   // Max samples per channel
-                ctx->resampled_audio_frame->format,  // Target format from frame
-                0);                                  // Alignment (0 = default)
+                ctx->resampled_audio_frame
+                    ->format,  // Target format from frame
+                0);            // Alignment (0 = default)
 
             if (ret < 0) {
                 fprintf(stderr,
@@ -646,9 +634,6 @@ void cleanup(AppContext *ctx) {
     memset(ctx, 0, sizeof(AppContext));
 }
 
-#ifdef __WIIU__
-int ffmpeg_sync2_main(char *filename) {
-#else
 // --- Main Function ---
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -656,8 +641,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     const char *filename = argv[1];
-#endif
-
     AppContext app_ctx = {0};  // Initialize context struct to zero
     AVPacket *pkt = NULL;
     int ret;
