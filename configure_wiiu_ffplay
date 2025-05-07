@@ -25,6 +25,7 @@ export WUT_ROOT=$DEVKITPRO/wut
 export PATH=$DEVKITPPC/bin:$PATH
 export ARCH="-mcpu=750 -meabi -mhard-float"
 export CFLAGS="-fomit-frame-pointer -ffast-math -fno-math-errno -funsafe-math-optimizations -ffinite-math-only -fno-trapping-math -O3 -Ofast -std=c11"
+export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/opt/devkitpro/portlibs/wiiu/lib/pkgconfig:/opt/devkitpro/portlibs/ppc/lib/pkgconfig"
 export SDL_CFLAGS=$($DEVKITPRO/portlibs/wiiu/bin/powerpc-eabi-pkg-config --cflags sdl2)
 export SDL_LDFLAGS=$($DEVKITPRO/portlibs/wiiu/bin/powerpc-eabi-pkg-config --libs sdl2)
 export COMPAT_CFLAGS=-I./compat/stdbit/
@@ -41,6 +42,8 @@ awk '
     print;
   }
 ' configure > configure.patched
+
+sed -i 's/.*SDL2_CONFIG=.*/SDL2_CONFIG=$DEVKITPRO\/portlibs\/wiiu\/bin\/sdl2-config/' configure.patched
 
 chmod +x configure.patched
 }
