@@ -53,19 +53,25 @@ fix_mangled_sdl2_libs() {
 sed -i 's/^EXTRALIBS-ffplay=.*/EXTRALIBS-ffplay=-L\/opt\/devkitpro\/portlibs\/wiiu\/lib -lSDL2 -lm -lwut/' ffbuild/config.mak
 }
 
+# TBD - must patch configure script for
+# aresample_filter
+# ffplay_select="crop_filter transpose_filter hflip_filter vflip_filter rotate_filter aresample_filter"
+
 
 do_configure() {
-./configure.patched  --prefix=$DEVKITPRO/portlibs/ppc/ \
+./configure.patched  --prefix=$DEVKITPRO/portlibs/wiiu/ \
 --enable-cross-compile \
 --cross-prefix=$DEVKITPPC/bin/powerpc-eabi- \
 --pkgconfigdir=$DEVKITPRO/portlibs/wiiu/lib/pkgconfig \
 --enable-sdl2 \
+--enable-filter=aresample \
+--enable-swresample \
 --disable-shared \
 --disable-runtime-cpudetect \
 --disable-doc \
 --disable-everything \
 --enable-decoder=mpeg4,h264,aac,ac3,mp3 \
---enable-demuxer=mov,h264 \
+--enable-demuxer=mov,mp4,m4a,3gp,3g2,mj2 \
 --enable-bsf=h264_mp4toannexb \
 --enable-filter=rotate,transpose \
 --enable-protocol=file \

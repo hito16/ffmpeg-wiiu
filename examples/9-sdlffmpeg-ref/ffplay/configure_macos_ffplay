@@ -1,0 +1,48 @@
+#!/bin/sh
+
+# original config script by rw-r-r-0644
+# modified by GaryOderNichts
+# modified by hito16
+
+#export CFLAGS="-fomit-frame-pointer -ffast-math -fno-math-errno -funsafe-math-optimizations -ffinite-math-only -fno-trapping-math -O3 -Ofast -std=c11"
+export CFLAGS="-O3 -Ofast -std=c11 -Wno-parentheses"
+export SDL_CFLAGS=$(pkg-config --cflags sdl2)
+export SDL_LDFLAGS=$(pkg-config --libs sdl2)
+#export COMPAT_CFLAGS=-I./compat/stdbit/
+
+# TBD - must patch configure script for
+# aresample_filter
+# ffplay_select="crop_filter transpose_filter hflip_filter vflip_filter rotate_filter aresample_filter"
+
+do_configure() {
+./configure  --prefix=$HOME/Downloads/build \
+--enable-sdl2 \
+--enable-filter=aresample \
+--enable-swresample \
+--disable-shared \
+--disable-runtime-cpudetect \
+--disable-doc \
+--disable-everything \
+--enable-decoder=mpeg4,h264,aac,ac3,mp3 \
+--enable-demuxer=mov,mp4,m4a,3gp,3g2,mj2 \
+--enable-bsf=h264_mp4toannexb \
+--enable-filter=rotate,transpose \
+--enable-protocol=file \
+--disable-network \
+--enable-static \
+--target-os=none \
+--extra-cflags="$CFLAGS" \
+--extra-cxxflags="$CFLAGS -fno-exceptions -std=gnu++11" \
+--extra-ldflags="" \
+--disable-debug \
+--disable-x86asm \
+--disable-bzlib \
+--disable-iconv \
+--disable-lzma \
+--disable-securetransport \
+--disable-xlib \
+--disable-zlib  
+}
+
+do_configure
+

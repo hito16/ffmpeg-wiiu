@@ -10,6 +10,9 @@ TOPDIR ?= $(CURDIR)
 
 include $(DEVKITPRO)/wut/share/wut_rules
 
+$(info included CC		= $(CC))
+$(info included LD		= $(LD))
+
 #-------------------------------------------------------------------------------
 # TARGET is the name of the output
 # BUILD is the directory where object files & intermediate files will be placed
@@ -128,6 +131,14 @@ export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 
 export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
+
+$(info OFILES_BIN $(OFILES_BIN))
+$(info OFILES_SRC $(OFILES_SRC))
+$(info OFILES $(OFILES))
+$(info HFILES_BIN $(HFILES_BIN))
+$(info INCLUDE $(INCLUDE))
+$(info LIBPATHS $(LIBPATHS))
+
 .PHONY: $(BUILD) clean all dist
 
 #-------------------------------------------------------------------------------
@@ -148,6 +159,8 @@ else
 .PHONY:	all
 
 DEPENDS	:=	$(OFILES:.o=.d)
+$(info DEPENDS $(DEPENDS))
+
 
 #-------------------------------------------------------------------------------
 # main targets
