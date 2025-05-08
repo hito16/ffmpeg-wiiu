@@ -6,6 +6,8 @@
 #  brew install sdl2_image
 #  brew install sdl2_ttf
 #  brew install pkgconf
+#
+#  Usage: make -f (this_file)
 
 # Compiler
 CC = gcc
