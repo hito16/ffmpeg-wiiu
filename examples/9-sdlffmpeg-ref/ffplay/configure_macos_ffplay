@@ -5,6 +5,7 @@
 # modified by hito16
 
 #export CFLAGS="-fomit-frame-pointer -ffast-math -fno-math-errno -funsafe-math-optimizations -ffinite-math-only -fno-trapping-math -O3 -Ofast -std=c11"
+#export CFLAGS="-g -Og -gdwarf-4 -O3 -Ofast -std=c11 -Wno-parentheses"
 export CFLAGS="-O3 -Ofast -std=c11 -Wno-parentheses"
 export SDL_CFLAGS=$(pkg-config --cflags sdl2)
 export SDL_LDFLAGS=$(pkg-config --libs sdl2)

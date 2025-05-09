@@ -1,6 +1,12 @@
 FFPLAY_TARGET = ffplay
 FFPLAY_SRC = fftools/ffplay_renderer.c fftools/cmdutils.c fftools/opt_common.c fftools/ffplay.c
 
+FFPLAY_LIB_TARGET = libffplay.a
+FFPLAY_LIB_SRC = fftools/ffplay_renderer.c fftools/cmdutils.c fftools/opt_common.c fftools/ffplay_cli.c
+
+FFPLAY_GENERIC_TARGET	= ffplay_generic 
+FFPLAY_GENERIC_SRC	=	fftools/generic_main.c 
+
 # Compiler
 CC = gcc
 
@@ -25,7 +31,7 @@ SDL_LDFLAGS = $(shell $(PKGCONF_MAC) --libs SDL2_ttf sdl2) \
             $(shell $(PKGCONF_MAC) --libs harfbuzz freetype2)
 
 # Combine CFLAGS and LDFLAGS (you can choose which ones to apply to ffplay)
-FFPLAY_CFLAGS = $(CFLAGS) $(FFMPEG_CFLAGS) $(SDL_CFLAGS) -I. -I../../../../ffmpeg
+FFPLAY_CFLAGS = $(CFLAGS) $(FFMPEG_CFLAGS) $(SDL_CFLAGS) -I. 
 FFPLAY_LDFLAGS = $(LDFLAGS) $(FFMPEG_LDFLAGS) $(SDL_LDFLAGS)
 FFPLAY_EXTRALIBS = # Add any extra libraries ffplay might need
 
@@ -38,6 +44,11 @@ $(FFPLAY_BUILD_DIR)/$(notdir $(basename $(1))).o
 endef
 
 FFPLAY_OBJ = $(foreach src,$(FFPLAY_SRC),$(call OBJ_PATH,$(src)))
+FFPLAY_LIB_OBJ = $(foreach src,$(FFPLAY_LIB_SRC),$(call OBJ_PATH,$(src)))
+$(info FFPLAY_SRC $(FFPLAY_SRC))
+$(info FFPLAY_LIB_SRC $(FFPLAY_LIB_SRC))
+$(info FFPLAY_OBJ $(FFPLAY_OBJ))
+$(info FFPLAY_LIB_OBJ $(FFPLAY_LIB_OBJ))
 
 # Build rule for ffplay
 $(FFPLAY_TARGET): $(FFPLAY_OBJ)
@@ -45,6 +56,18 @@ $(FFPLAY_TARGET): $(FFPLAY_OBJ)
 	@mkdir -p $(FFPLAY_BUILD_DIR)
 	$(CC) $(FFPLAY_CFLAGS) $(FFPLAY_OBJ) -o $(FFPLAY_TARGET) $(FFPLAY_LDFLAGS) $(FFPLAY_EXTRALIBS)
 	@echo "Build of $(FFPLAY_TARGET) complete!"
+
+$(FFPLAY_GENERIC_TARGET): $(FFPLAY_LIB_TARGET)
+	@echo "Linking $(FFPLAY_GENERIC_TARGET)..."
+	@mkdir -p $(FFPLAY_BUILD_DIR)
+	$(CC) $(FFPLAY_CFLAGS)  $(FFPLAY_GENERIC_SRC) -o $(FFPLAY_GENERIC_TARGET) $(FFPLAY_LDFLAGS) $(FFPLAY_EXTRALIBS) -L. -lffplay
+
+
+$(FFPLAY_LIB_TARGET): $(FFPLAY_LIB_OBJ)
+	@echo "Creating static library $(FFPLAY_LIB_TARGET)..."
+	@mkdir -p $(FFPLAY_BUILD_DIR)  
+	$(AR) $(ARFLAGS) $(FFPLAY_LIB_TARGET) $(FFPLAY_LIB_OBJ)
+	@echo "Build of $(FFPLAY_LIB_TARGET) complete!"
 
 # Explicit rule to compile each object file
 $(FFPLAY_BUILD_DIR)/%.o: fftools/%.c
