@@ -1,9 +1,19 @@
+# makefile to build ffplay executable on WiiU, as a sanity check
+# assumes you configured and built ffmpeg with ffplay enabled
+#  
+# This file will be copied to and run from $FFMPEG_SRC, the root directory of the
+#   ffmpeg master checkout
+
+# ffplay is the same target built by the ffmpeg build scripts
 FFPLAY_TARGET = ffplay
 FFPLAY_SRC = fftools/ffplay_renderer.c fftools/cmdutils.c fftools/opt_common.c fftools/ffplay.c
 
+# ffplay_lib is a patched version of ffplay, with main() renamed so it
+#   can be built as a linkable static library
 FFPLAY_LIB_TARGET = libffplay.a
 FFPLAY_LIB_SRC = fftools/ffplay_renderer.c fftools/cmdutils.c fftools/opt_common.c fftools/ffplay_cli.c
 
+# a generic main, to call our library.  Only used on MacOS. On WiiU, we link the library into sdlmain.c
 FFPLAY_GENERIC_TARGET	= ffplay_generic 
 FFPLAY_GENERIC_SRC	=	fftools/generic_main.c 
 
