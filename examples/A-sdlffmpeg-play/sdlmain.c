@@ -29,12 +29,17 @@ int main(int argc, char **argv) {
 #ifdef __WIIU__
     printf("initialized romfs");
 #ifdef DEBUG
+    // code will block util syslog service Docker is up
     if (init_rsyslogger() != 0) {
         // setup udp or cafe logging
     }
 #endif  // DEBUG
 #endif  // __WIIU__
 
+    // Something to boot up, clear the screen, wait for any button press.
+    // While waiting, bring up syslog window and tail the logs.
+    // From example 8, we know we can do SDL_Init and SDL_Quit several times
+    // in a row and run SDL UI's back to back.
     sdltriangle_main();
 
     printf("starting main\n");

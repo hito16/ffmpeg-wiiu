@@ -87,12 +87,6 @@ LIBS		+=	$(FFMPEG_LDFLAGS) $(SDL_LDFLAGS) \
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 #-------------------------------------------------------------------------------
 
-#---------------------------------------------------------------------------------
-# Font instructions:
-# This example uses a TTF which the user must download from Google Fonts. Added
-#  this check so I don't need to commit the 150K font to github for a tutorial.
-#---------------------------------------------------------------------------------
-$(info make sure you Download font and copy to "romfs/res/Roboto-Regular.ttf")
 #-------------------------------------------------------------------------------
 
 export OUTPUT	:=	$(CURDIR)/$(TARGET)

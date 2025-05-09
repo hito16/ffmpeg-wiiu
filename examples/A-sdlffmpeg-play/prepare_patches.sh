@@ -20,6 +20,10 @@ if ! [ -d "$FFMPEG_SRC/fftools" ]; then
 fi
 
 rebuild_library() {
+   if [ -z "$DEVKITPRO" ]; then
+	   echo "DEVKITPRO is not set. This can only run in a devkitpro environment"
+	   exit 1
+   fi
    echo "Rebuilding library"
    ./prepare_patches.sh
    (cd /project/FFmpeg-master && make -f Makefile.wiiu.mk libffplay.a)
