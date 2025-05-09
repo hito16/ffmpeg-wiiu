@@ -31,7 +31,7 @@ export SDL_LDFLAGS=$($DEVKITPRO/portlibs/wiiu/bin/powerpc-eabi-pkg-config --libs
 export COMPAT_CFLAGS=-I./compat/stdbit/
 
 # fake out the sdl2 detection
-force_enable_sdl2_patch(){
+patch_configure_force_enable_sdl2(){
 awk '
   /check_func_headers SDL_events\.h SDL_PollEvent/ {
     print;
@@ -49,14 +49,16 @@ chmod +x configure.patched
 }
 
 # paste in the result of pkg-config --list sdl2
-fix_mangled_sdl2_libs() {
+patch_config_mk_mangled_sdl2_libs() {
 sed -i 's/^EXTRALIBS-ffplay=.*/EXTRALIBS-ffplay=-L\/opt\/devkitpro\/portlibs\/wiiu\/lib -lSDL2 -lm -lwut/' ffbuild/config.mak
 }
 
+patch_configure_aresample_filter(){
 # TBD - must patch configure script for
 # aresample_filter
 # ffplay_select="crop_filter transpose_filter hflip_filter vflip_filter rotate_filter aresample_filter"
-
+sed -i 's/rotate_filter"/rotate_filter aresample_filter"/g' configure.patched
+}
 
 do_configure() {
 ./configure.patched  --prefix=$DEVKITPRO/portlibs/wiiu/ \
@@ -92,8 +94,9 @@ do_configure() {
 --disable-zlib  
 }
 
-force_enable_sdl2_patch
+patch_configure_force_enable_sdl2
+patch_configure_aresample_filter
 
 do_configure
 
-fix_mangled_sdl2_libs
+patch_config_mk_mangled_sdl2_libs

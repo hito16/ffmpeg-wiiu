@@ -1,8 +1,11 @@
 #ifndef SDLPORTABLES_H
 #define SDLPORTABLES_H
 
-// standalone programs we load into our main with minor changes
-//int ffmpeg_decode4_main(const char *input_file);
-int ffmpeg_sync2_main(char *filename);
+// resources directory, or for WiiU, the ROMFS mount romfs:/
+extern const char* RES_ROOT;
 
-#endif  // SDLPORTABLES_H
+// standalone programs we load into our main with minor changes
+int sdltriangle_main();
+int sdlanimate_main();
+
+#endif // SDLPORTABLES_H

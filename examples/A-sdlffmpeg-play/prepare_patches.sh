@@ -19,6 +19,23 @@ if ! [ -d "$FFMPEG_SRC/fftools" ]; then
   exit 1
 fi
 
+rebuild_library() {
+   echo "Rebuilding library"
+   ./prepare_patches.sh
+   (cd /project/FFmpeg-master && make -f Makefile.wiiu.mk libffplay.a)
+   cp /project/FFmpeg-master/libffplay.a . 
+   (make clean && mkdir -p build && cp libffplay.a build)
+   make 
+}
+
+# shortcut to rebuild the pkg after you make changes to ffplay.c
+if [ "$1" == "rebuild" ]; then 
+	     rebuild_library
+	     exit 0
+fi
+
+	
+
 generate_main_stub() {
 
 cat << EOF
@@ -59,8 +76,8 @@ EOF
 }
 
 echo "= copy over custom configure_xxx_ffplay"
-cp configure_wiiu_ffplay $FFMPEG_SRC
-cp configure_macos_ffplay $FFMPEG_SRC
+cp configure_*_ffplay $FFMPEG_SRC
+cp Makefile.*.mk $FFMPEG_SRC
 
 
 echo '= generating copy of ffplay.c as ffplay_cli.c'
@@ -75,7 +92,7 @@ generate_main_stub > $FFMPEG_SRC/fftools/generic_main.c
 cat << EOF
 
 == done, next steps =
-1. run the configure_xxx_ffplay in $FFMPEG_SRC
+1. run the configure_macos_ffplay in $FFMPEG_SRC
 
 2. Ensure configure detects SDL and filter aresample (needed for sound)
 
@@ -99,24 +116,24 @@ ONLY continue if you see at least sdl2
 
 3. on your mac, 
     cd $FFMPEG_SRC
-    make &&  make install
+    make && make install
 
 4. on your mac, try out ffplay on your dev 
     cd $FFMPEG_SRC
     ./ffplay <video file>
 
 5. on your mac, try out our rebuilt ffplay
-  - cd $FFMPEG_SRC
-  - rm -f  ./ffplay and ./fftools/*.o  
-  - make -f Makefile.macos.mk
-  - ./ffplay <video file>
+   cd $FFMPEG_SRC
+   rm -f  ./ffplay and ./fftools/*.o  
+   make -f Makefile.macos.mk
+   ./ffplay <video file>
 
 (should work) We replicated their Makefile to rebuild ffplay.
 We are now free of their build process and can integrate with ours.
 
 6. on your mac, build ffplay as a library
-  - cd $FFMPEG_SRC
-  - make -f Makefile.macos.mk libffmplay
+   cd $FFMPEG_SRC
+   make -f Makefile.macos.mk libffplay.a
   - confirm libffplay.a was built
 
 At this point, we have succesfully rebuilt ffmplay as a library 
@@ -124,12 +141,47 @@ We could ship this library anywhere, and use it our own apps.
 
 8. on your mac, build ffplay_generic with our library
   - edit fftools/generic_main.c and add a real media file path
-  - make -f Makefile.macos.mk ffplay_generic
+  make -f Makefile.macos.mk ffplay_generic
   - run ffplay_generic with no args
+  ./ffplay_generic
 
 See where we're going with this? the ffplay_generic main()
 is just like a wiiu homebrew app
 
 We will repeate this on a devkitpro/WUT build.
+
+9. in your devkitpro shell, configure 
+   cd $FFMPEG_SRC
+   ./configure_wiiu_ffplay
+
+10. check for SDL and aresample in configure output
+  - stop if they're not detected. no point
+
+11. in your devkitpro shell, build ffplay
+   cd $FFMPEG_SRC
+   make clean; make
+   - confirm ffplay is in the $FFMPEG_SRC top directory
+
+12. in your devkitpro shell, build our ffplay library
+   cd <this directory>
+   (cd $FFMPEG_SRC && make -f Makefile.wiiu.mk libffplay.a)
+
+13. in your devkitpro shell, copy the library
+   cd <this directory>
+   cp $FFMPEG_SRC/libffplay.a . 
+
+14. build your wiiu app
+   (make clean && mkdir -p build && cp libffplay.a build)
+   make 
+
+once those steps all work, you'll want to add comments to ffplay.c
+To test changes and quickly rebuild he package, do this.
+   
+  ./prepare_patches.sh rebuild
+
+
+--- progress so far ---
+The app loads, and I can see the output in rsyslog debugging.
+Nothing appears on the screen.  Debugging.
 
 EOF

@@ -23,7 +23,9 @@
 #include "exutil.h"
 #include "sdlportables.h"
 
-int main(int argc, char** argv) {
+int ffplay_main(int argc, char **argv);
+
+int main(int argc, char **argv) {
 #ifdef __WIIU__
     printf("initialized romfs");
 #ifdef DEBUG
@@ -33,24 +35,41 @@ int main(int argc, char** argv) {
 #endif  // DEBUG
 #endif  // __WIIU__
 
-    WHBProcInit();
-    WHBLogConsoleInit();
-    WHBLogPrintf("== Starting main");
-    WHBLogConsoleDraw();
+    sdltriangle_main();
 
     printf("starting main\n");
     // Call your SDL routine here.
     char buffer[1024];
     if (util_get_first_media_file(buffer, 1024) == 0) {
         printf("found media file %s\n", buffer);
-        WHBLogPrintf("== loading %s", buffer);
-        WHBLogConsoleDraw();
-        ffmpeg_sync2_main(buffer);
-        // ffmpeg_decode4_main(buffer);
+        char *my_argv[] = {
+            "ffplay",  // argv[0] is the program name.
+            "-v",
+            "warning",
+            "-fs",  // force full screen
+            "-threads",
+            "1",  // single threaded?
+            "-probesize",
+            "1024",  // bytes to detect streams
+            "-analyzeduration",
+            "1000000",  // microsec to detect streams
+            buffer,     //(char *)filename,
+            NULL        // argv must be NULL-terminated.
+        };
+        int my_argc = 11;  // Number of arguments in my_argv
+
+        // Call ffplay_main
+        int result = ffplay_main(my_argc, my_argv);
+
+        // Do something with the result (e.g., check for errors)
+        if (result != 0) {
+            fprintf(stderr, "ffplay_main failed with error code: %d\n", result);
+            //  Consider returning a non-zero value from main to indicate
+            //  failure
+            return 1;
+        }
     }
 
-    WHBLogConsoleFree();
-    WHBProcShutdown();
     printf("exiting main\n");
     return 0;
 }

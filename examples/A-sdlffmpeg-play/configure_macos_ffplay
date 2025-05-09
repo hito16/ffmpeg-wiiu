@@ -14,6 +14,7 @@ export SDL_LDFLAGS=$(pkg-config --libs sdl2)
 # TBD - must patch configure script for
 # aresample_filter
 # ffplay_select="crop_filter transpose_filter hflip_filter vflip_filter rotate_filter aresample_filter"
+#sed -i 's/# ffplay_select="[^"]*"/# ffplay_select="& aresample_filter"/g' options.txt
 
 do_configure() {
 ./configure  --prefix=$HOME/Downloads/build \

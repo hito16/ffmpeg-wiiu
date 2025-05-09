@@ -18,17 +18,19 @@ include $(DEVKITPRO)/wut/share/wut_rules
 # INCLUDES is a list of directories containing header files
 #-------------------------------------------------------------------------------
 
-TARGET		:=	sdl-ffmpeg-test1-app
+TARGET		:=	sdl-ffplay-app
 BUILD		:= 	build
 SOURCES		:=	. \
 				../rsyslog
 
-SOURCE_FILES	:=	../example-util/rsyslog-wiiu.c \
-					../example-util/file.c
+SOURCE_FILES	:=	\
+                    ../example-util/rsyslog-wiiu.c \
+					../example-util/file.c 
 
 INCLUDES	:=	. \
 				../rsyslog \
-				../example-util 
+				../example-util
+				
 
 #-------------------------------------------------------------------------------
 # options for code generation
@@ -44,13 +46,13 @@ CXXFLAGS	:= $(CFLAGS)
 ASFLAGS	:=	$(ARCH)
 LDFLAGS	=	$(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:=  -lwut 
+LIBS	:=  -lwut -lffplay -L.
 
 #-------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level
 # containing include and lib
 #-------------------------------------------------------------------------------
-LIBDIRS	:= $(PORTLIBS) $(WUT_ROOT)
+LIBDIRS	:= $(PORTLIBS) $(WUT_ROOT) 
 
 #---------------------------------------------------------------------------------
 # SDL libraries
@@ -58,8 +60,8 @@ LIBDIRS	:= $(PORTLIBS) $(WUT_ROOT)
 # Minimal libraries to check if your environement is configured
 PKGCONF			:=	$(DEVKITPRO)/portlibs/ppc/bin/powerpc-eabi-pkg-config
 PKGCONF_WIIU	:=	$(DEVKITPRO)/portlibs/wiiu/bin/powerpc-eabi-pkg-config
-FFMPEG_CFLAGS	:= $(shell $(PKGCONF_WIIU) --cflags libavformat libavcodec libavutil libswresample libswscale)
-FFMPEG_LDFLAGS	:= $(shell $(PKGCONF_WIIU) --libs libavformat libavcodec libavutil libswresample libswscale)
+FFMPEG_CFLAGS	:= $(shell $(PKGCONF_WIIU) --cflags libavdevice libavfilter libavformat libavcodec libavutil libswresample libswscale)
+FFMPEG_LDFLAGS	:= $(shell $(PKGCONF_WIIU) --libs libavdevice libavfilter libavformat libavcodec libavutil libswresample libswscale)
 SDL_CFLAGS	:= $(shell $(PKGCONF_WIIU) --cflags sdl2)
 SDL_LDFLAGS := $(shell $(PKGCONF_WIIU) --libs sdl2)
 CFLAGS		+=	$(FFMPEG_CPFLAGS) $(SDL_CFLAGS)
@@ -132,7 +134,6 @@ export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 			-I$(CURDIR)/$(BUILD)
 
 export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
-
 .PHONY: $(BUILD) clean all dist
 
 #-------------------------------------------------------------------------------
