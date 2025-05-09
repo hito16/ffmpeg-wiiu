@@ -1,0 +1,15 @@
+gcc -Og -gdwarf-4 helloworld.c -o helloworld
+
+(gdb) set startup-with-shell off
+(gdb) break 5
+Breakpoint 1 at 0x100000474: file helloworld.c, line 5.
+(gdb) run
+Starting program: /Users/scottstraw/Documents/GitHub/ffmpeg-wiiu/examples/9-sdlffmpeg-ref/macos/helloworld 
+[New Thread 0x1503 of process 16354]
+[Thread 0x1503 of process 16354 exited]
+[New Thread 0x2003 of process 16354]
+warning: unhandled dyld version (17)
+
+Thread 2 hit Breakpoint 1, main () at helloworld.c:5
+5     printf("Hello, world! x = %d\n", x);
+(gdb) 

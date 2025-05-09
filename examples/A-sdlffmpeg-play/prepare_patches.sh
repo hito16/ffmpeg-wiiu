@@ -79,6 +79,7 @@ cat << EOF
 
 2. Ensure configure detects SDL and filter aresample (needed for sound)
 
+LOOK FOR THIS "sdl2" (REQUIRED).  Ex.
 ...
 
 External libraries:
@@ -87,6 +88,7 @@ avfoundation            libxcb                  libxcb_shm              sdl2
 
 ...
 
+LOOK FOR "aresample" (needed for audio) Ex.
 Enabled filters:
 aformat                 atrim                   hflip                   transpose
 anull                   crop                    null                    trim
