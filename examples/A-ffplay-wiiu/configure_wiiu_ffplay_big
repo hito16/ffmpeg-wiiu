@@ -30,35 +30,6 @@ export SDL_CFLAGS=$($DEVKITPRO/portlibs/wiiu/bin/powerpc-eabi-pkg-config --cflag
 export SDL_LDFLAGS=$($DEVKITPRO/portlibs/wiiu/bin/powerpc-eabi-pkg-config --libs sdl2)
 export COMPAT_CFLAGS=-I./compat/stdbit/
 
-# fake out the sdl2 detection
-patch_configure_force_enable_sdl2(){
-awk '
-  /check_func_headers SDL_events\.h SDL_PollEvent/ {
-    print;
-    print "  enable sdl2";
-    next;  # Skip to the next line
-  }
-  {
-    print;
-  }
-' configure > configure.patched
-
-sed -i 's/.*SDL2_CONFIG=.*/SDL2_CONFIG=$DEVKITPRO\/portlibs\/wiiu\/bin\/sdl2-config/' configure.patched
-
-chmod +x configure.patched
-}
-
-# paste in the result of pkg-config --list sdl2
-patch_config_mk_mangled_sdl2_libs() {
-sed -i 's/^EXTRALIBS-ffplay=.*/EXTRALIBS-ffplay=-L\/opt\/devkitpro\/portlibs\/wiiu\/lib -lSDL2 -lm -lwut/' ffbuild/config.mak
-}
-
-patch_configure_aresample_filter(){
-# TBD - must patch configure script for
-# aresample_filter
-# ffplay_select="crop_filter transpose_filter hflip_filter vflip_filter rotate_filter aresample_filter"
-sed -i 's/rotate_filter"/rotate_filter aresample_filter"/g' configure.patched
-}
 
 do_configure() {
 ./configure.patched  --prefix=$DEVKITPRO/portlibs/wiiu/ \
@@ -66,16 +37,11 @@ do_configure() {
 --cross-prefix=$DEVKITPPC/bin/powerpc-eabi- \
 --pkgconfigdir=$DEVKITPRO/portlibs/wiiu/lib/pkgconfig \
 --enable-sdl2 \
---enable-filter=aresample \
 --enable-swresample \
 --disable-shared \
 --disable-runtime-cpudetect \
 --disable-doc \
---disable-everything \
---enable-decoder=mpeg4,h264,aac,ac3,mp3 \
---enable-demuxer=mov,mp4,m4a,3gp,3g2,mj2 \
---enable-bsf=h264_mp4toannexb \
---enable-filter=rotate,transpose \
+--disable-protocols \
 --enable-protocol=file \
 --disable-network \
 --enable-static \
@@ -94,9 +60,4 @@ do_configure() {
 --disable-zlib  
 }
 
-patch_configure_force_enable_sdl2
-patch_configure_aresample_filter
-
 do_configure
-
-patch_config_mk_mangled_sdl2_libs

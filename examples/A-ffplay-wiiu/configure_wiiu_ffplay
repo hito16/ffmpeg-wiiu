@@ -1,0 +1,102 @@
+#!/bin/sh
+
+# original config script by rw-r-r-0644
+# modified by GaryOderNichts
+# modified by hito16
+
+# you probably don't want this
+# This configure script will build the ffplay media player with SDL2
+# 
+# The configure script is too rigid, and the way devkitpro + portlibs 
+# lays out packages is too unfamilar to the script.   A change in either
+# would make building easier.
+#
+# To get around this, we apply two non-permanent, non-invasive pathes
+# to the configure script and a generated mk include.
+
+if [ -z "$DEVKITPRO" -o -z "$DEVKITPPC" ]; then
+  echo required variable must be set, exiting...
+  echo DEVKITPRO="$DEVKITPRO"
+  echo DEVKITPPC="$DEVKITPPC"
+  exit 1
+fi
+export WUT_ROOT=$DEVKITPRO/wut
+  
+export PATH=$DEVKITPPC/bin:$PATH
+export ARCH="-mcpu=750 -meabi -mhard-float"
+export CFLAGS="-fomit-frame-pointer -ffast-math -fno-math-errno -funsafe-math-optimizations -ffinite-math-only -fno-trapping-math -O3 -Ofast -std=c11"
+export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/opt/devkitpro/portlibs/wiiu/lib/pkgconfig:/opt/devkitpro/portlibs/ppc/lib/pkgconfig"
+export SDL_CFLAGS=$($DEVKITPRO/portlibs/wiiu/bin/powerpc-eabi-pkg-config --cflags sdl2)
+export SDL_LDFLAGS=$($DEVKITPRO/portlibs/wiiu/bin/powerpc-eabi-pkg-config --libs sdl2)
+export COMPAT_CFLAGS=-I./compat/stdbit/
+
+# fake out the sdl2 detection
+patch_configure_force_enable_sdl2(){
+awk '
+  /check_func_headers SDL_events\.h SDL_PollEvent/ {
+    print;
+    print "  enable sdl2";
+    next;  # Skip to the next line
+  }
+  {
+    print;
+  }
+' configure > configure.patched
+
+sed -i 's/.*SDL2_CONFIG=.*/SDL2_CONFIG=$DEVKITPRO\/portlibs\/wiiu\/bin\/sdl2-config/' configure.patched
+
+chmod +x configure.patched
+}
+
+# paste in the result of pkg-config --list sdl2
+patch_config_mk_mangled_sdl2_libs() {
+sed -i 's/^EXTRALIBS-ffplay=.*/EXTRALIBS-ffplay=-L\/opt\/devkitpro\/portlibs\/wiiu\/lib -lSDL2 -lm -lwut/' ffbuild/config.mak
+}
+
+patch_configure_aresample_filter(){
+# TBD - must patch configure script for
+# aresample_filter
+# ffplay_select="crop_filter transpose_filter hflip_filter vflip_filter rotate_filter aresample_filter"
+sed -i 's/rotate_filter"/rotate_filter aresample_filter"/g' configure.patched
+}
+
+do_configure() {
+./configure.patched  --prefix=$DEVKITPRO/portlibs/wiiu/ \
+--enable-cross-compile \
+--cross-prefix=$DEVKITPPC/bin/powerpc-eabi- \
+--pkgconfigdir=$DEVKITPRO/portlibs/wiiu/lib/pkgconfig \
+--enable-sdl2 \
+--enable-swresample \
+--disable-shared \
+--disable-runtime-cpudetect \
+--disable-doc \
+--disable-everything \
+--enable-decoder=mpeg4,h264,aac,ac3,mp3 \
+--enable-parser=h264,aac,ac3 \
+--enable-demuxer=mov,mp4,m4a,3gp,3g2,mj2 \
+--enable-bsf=h264_mp4toannexb \
+--enable-filter=aformat,anull,aresample,atrim,crop,format,hflip,null,rotate,scale,transpose,trim,vlflip \
+--enable-protocol=file \
+--disable-network \
+--enable-static \
+--arch=ppc \
+--cpu=750 \
+--target-os=none \
+--extra-cflags=" -D__WIIU__ $CFLAGS $ARCH $COMPAT_CFLAGS -I$WUT_ROOT/include $SDL_CFLAGS" \
+--extra-cxxflags=" -D__WIIU__ $CFLAGS -fno-rtti -fno-exceptions -std=gnu++11 $ARCH" \
+--extra-ldflags=" -Wl,-q -Wl,-z,nocopyreloc -specs=$WUT_ROOT/share/wut.specs $SDL_LDFLAGS -L$WUT_ROOT/lib  -lwut" \
+--disable-debug \
+--disable-bzlib \
+--disable-iconv \
+--disable-lzma \
+--disable-securetransport \
+--disable-xlib \
+--disable-zlib  
+}
+
+patch_configure_force_enable_sdl2
+patch_configure_aresample_filter
+
+do_configure
+
+patch_config_mk_mangled_sdl2_libs

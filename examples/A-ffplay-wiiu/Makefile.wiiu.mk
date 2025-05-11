@@ -32,15 +32,19 @@ CFLAGS	:=	-O3 -ffunction-sections -fdata-sections \
 			$(MACHDEP) \
 			-D_ISOC11_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U__STRICT_ANSI__ \
 			-D_XOPEN_SOURCE=600 \
+			-D__WIIU__ \
 			-fomit-frame-pointer \
 			-ffast-math -fno-math-errno  -funsafe-math-optimizations -ffinite-math-only -fno-trapping-math \
-			-O3 -Ofast -std=c11 -mcpu=750 -meabi -mhard-float
+			-O3 -Ofast -std=c11 -mcpu=750 -meabi -mhard-float 
+LDFLAGS :=	-Wl,-q -Wl,-z,nocopyreloc -specs=$(WUT_ROOT)/share/wut.specs
 
 
 # Path to pkg-config (adjust if necessary)
 # export PKG_CONFIG_PATH=/Users/scottstraw/Downloads/build/lib/pkgconfig
+#PKG_CONFIG_PATH = $(DEVKITPRO)/portlibs/ppc/lib/pkgconfig:$(DEVKITPRO)/portlibs/wiiu/lib/pkgconfig
+#export PKG_CONFIG_PATH
+$(info PKG_CONFIG_PATH $(PKG_CONFIG_PATH))
 PKGCONF := /usr/bin/pkg-config
-
 
 # External dependencies
 FFMPEG_CFLAGS = $(shell $(PKGCONF) --cflags libavdevice libavfilter libavformat libavcodec libavutil libswresample libswscale)
@@ -50,7 +54,7 @@ SDL_LDFLAGS = $(shell $(PKGCONF) --libs SDL2_ttf sdl2) \
             $(shell $(PKGCONF) --libs harfbuzz freetype2)
 
 # Combine CFLAGS and LDFLAGS (you can choose which ones to apply to ffplay)
-FFPLAY_CFLAGS = $(CFLAGS) $(FFMPEG_CFLAGS) $(SDL_CFLAGS) -I. 
+FFPLAY_CFLAGS = $(CFLAGS) $(FFMPEG_CFLAGS) $(SDL_CFLAGS) -I.  -I$(WUT_ROOT)/include
 FFPLAY_LDFLAGS = $(LDFLAGS) $(FFMPEG_LDFLAGS) $(SDL_LDFLAGS) -L$(WUT_ROOT)/lib 
 FFPLAY_EXTRALIBS = # Add any extra libraries ffplay might need
 
@@ -70,11 +74,12 @@ $(info FFPLAY_OBJ $(FFPLAY_OBJ))
 $(info FFPLAY_LIB_OBJ $(FFPLAY_LIB_OBJ))
 $(info FFPLAY_CFLAGS $(FFPLAY_CFLAGS))
 $(info FFPLAY_LDFLAGS $(FFPLAY_LDFLAGS))
-
+$(info SDL_CFLAGS $(FFPLAY_CFLAGS))
+$(info SDL_LDFLAGS $(FFPLAY_LDFLAGS))
 
 # Build rule for ffplay
 $(FFPLAY_TARGET): $(FFPLAY_OBJ)
-	@echo "Linking $(FFPLAY_TARGET)..."
+	@echo "Linking a non-functional, but generic binary $(FFPLAY_TARGET)..."
 	@mkdir -p $(FFPLAY_BUILD_DIR)
 	$(CC) $(FFPLAY_CFLAGS) $(FFPLAY_OBJ) -o $(FFPLAY_TARGET) $(FFPLAY_LDFLAGS) $(FFPLAY_EXTRALIBS)
 	@echo "Build of $(FFPLAY_TARGET) complete!"
@@ -95,7 +100,7 @@ $(FFPLAY_LIB_TARGET): $(FFPLAY_LIB_OBJ)
 $(FFPLAY_BUILD_DIR)/%.o: fftools/%.c
 	@echo "Compiling $< to $@"
 	@mkdir -p $(FFPLAY_BUILD_DIR)
-	$(CC) $(FFPLAY_CFLAGS) -c $< -o $@
+	$(CC) $(FFPLAY_CFLAGS) $(SDL_CFLAGS) -c $< -o $@
 
 # Clean rule
 clean:

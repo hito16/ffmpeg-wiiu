@@ -33,7 +33,7 @@ rebuild_library() {
 }
 
 # shortcut to rebuild the pkg after you make changes to ffplay.c
-if [ "$1" == "rebuild" ]; then 
+if [ "$1" == "rebuildlib" ]; then 
 	     rebuild_library
 	     exit 0
 fi
@@ -181,7 +181,7 @@ We will repeate this on a devkitpro/WUT build.
 once those steps all work, you'll want to add comments to ffplay.c
 To test changes and quickly rebuild he package, do this.
    
-  ./prepare_patches.sh rebuild
+  ./prepare_patches.sh rebuildlib
 
 
 --- progress so far ---

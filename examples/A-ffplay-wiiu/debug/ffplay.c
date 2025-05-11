@@ -59,6 +59,10 @@
 #include "ffplay_renderer.h"
 #include "opt_common.h"
 
+#ifdef __WIIU__
+#include <coreinit/thread.h>
+#endif
+
 const char program_name[] = "ffplay";
 const int program_birth_year = 2003;
 
@@ -407,6 +411,22 @@ static const struct TextureFormatEntry
     {AV_PIX_FMT_UYVY422, SDL_PIXELFORMAT_UYVY},
 };
 
+/*
+#ifdef __WIIU__
+void custom_av_log(void *ptr, int level, const char *fmt, va_list vl)
+{
+    FILE *fp = fopen("/vol/external01/media/av_log.txt", "a+");
+    if (fp)
+    {
+        vfprintf(fp, fmt, vl);
+        fflush(fp);
+        fclose(fp);
+    }
+
+}
+#endif
+*/
+
 static int opt_add_vfilter(void *optctx, const char *opt, const char *arg)
 {
     int ret = GROW_ARRAY(vfilters_list, nb_vfilters);
@@ -435,6 +455,7 @@ static int packet_queue_put_private(PacketQueue *q, AVPacket *pkt)
     MyAVPacketList pkt1;
     int ret;
 
+    printf(" p packet_queue_put_private()\n");
     if (q->abort_request)
         return -1;
 
@@ -448,6 +469,7 @@ static int packet_queue_put_private(PacketQueue *q, AVPacket *pkt)
     q->size += pkt1.pkt->size + sizeof(pkt1);
     q->duration += pkt1.pkt->duration;
     /* XXX: should duplicate packet data in DV case */
+    printf(" p SDL_CondSignal\n");
     SDL_CondSignal(q->cond);
     return 0;
 }
@@ -456,6 +478,8 @@ static int packet_queue_put(PacketQueue *q, AVPacket *pkt)
 {
     AVPacket *pkt1;
     int ret;
+
+    printf(" p packet_queue_put()\n");
 
     pkt1 = av_packet_alloc();
     if (!pkt1)
@@ -477,6 +501,8 @@ static int packet_queue_put(PacketQueue *q, AVPacket *pkt)
 
 static int packet_queue_put_nullpacket(PacketQueue *q, AVPacket *pkt, int stream_index)
 {
+    printf(" p packet_queue_put_nullpacket()\n");
+
     pkt->stream_index = stream_index;
     return packet_queue_put(q, pkt);
 }
@@ -484,6 +510,8 @@ static int packet_queue_put_nullpacket(PacketQueue *q, AVPacket *pkt, int stream
 /* packet queue handling */
 static int packet_queue_init(PacketQueue *q)
 {
+    printf(" p packet_queue_init()\n");
+
     memset(q, 0, sizeof(PacketQueue));
     q->pkt_list = av_fifo_alloc2(1, sizeof(MyAVPacketList), AV_FIFO_FLAG_AUTO_GROW);
     if (!q->pkt_list)
@@ -508,6 +536,8 @@ static void packet_queue_flush(PacketQueue *q)
 {
     MyAVPacketList pkt1;
 
+    printf(" p packet_queue_flush()\n");
+
     SDL_LockMutex(q->mutex);
     while (av_fifo_read(q->pkt_list, &pkt1, 1) >= 0)
         av_packet_free(&pkt1.pkt);
@@ -520,6 +550,7 @@ static void packet_queue_flush(PacketQueue *q)
 
 static void packet_queue_destroy(PacketQueue *q)
 {
+    printf(" p packet_queue_destroy()");
     packet_queue_flush(q);
     av_fifo_freep2(&q->pkt_list);
     SDL_DestroyMutex(q->mutex);
@@ -528,6 +559,7 @@ static void packet_queue_destroy(PacketQueue *q)
 
 static void packet_queue_abort(PacketQueue *q)
 {
+    printf(" p packet_queue_abort()\n");
     SDL_LockMutex(q->mutex);
 
     q->abort_request = 1;
@@ -539,6 +571,7 @@ static void packet_queue_abort(PacketQueue *q)
 
 static void packet_queue_start(PacketQueue *q)
 {
+    printf(" p packet_queue_start()\n");
     SDL_LockMutex(q->mutex);
     q->abort_request = 0;
     q->serial++;
@@ -550,36 +583,42 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block, int *seria
 {
     MyAVPacketList pkt1;
     int ret;
-
+    printf(" p packet_queue_get()\n");
     SDL_LockMutex(q->mutex);
 
     for (;;)
     {
         if (q->abort_request)
         {
+            printf(" p packet_queue_get abort_request\n");
             ret = -1;
             break;
         }
 
+        printf(" p packet_queue_get attempt av_fifo_read >= 0\n");
         if (av_fifo_read(q->pkt_list, &pkt1, 1) >= 0)
         {
             q->nb_packets--;
             q->size -= pkt1.pkt->size + sizeof(pkt1);
             q->duration -= pkt1.pkt->duration;
+            printf(" p packet_queue_get if (av_fifo_read(q->pkt_list, &pkt1, 1) >= 0)\n");
             av_packet_move_ref(pkt, pkt1.pkt);
             if (serial)
                 *serial = pkt1.serial;
             av_packet_free(&pkt1.pkt);
             ret = 1;
+            printf(" p packet_queue_get retrieved a packet\n");
             break;
         }
         else if (!block)
         {
+            printf(" p packet_queue_get else if (!block)\n");
             ret = 0;
             break;
         }
         else
         {
+            printf(" p SDL_CondWait\n");
             SDL_CondWait(q->cond, q->mutex);
         }
     }
@@ -589,6 +628,7 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block, int *seria
 
 static int decoder_init(Decoder *d, AVCodecContext *avctx, PacketQueue *queue, SDL_cond *empty_queue_cond)
 {
+    printf("decoder_init()\n");
     memset(d, 0, sizeof(Decoder));
     d->pkt = av_packet_alloc();
     if (!d->pkt)
@@ -617,6 +657,7 @@ static int decoder_decode_frame(Decoder *d, AVFrame *frame, AVSubtitle *sub)
                 switch (d->avctx->codec_type)
                 {
                 case AVMEDIA_TYPE_VIDEO:
+                    printf("decoder_decode_frame() AVMEDIA_TYPE_VIDEO avcodec_recieve_frame() %s, t%d\n", d->avctx->codec->name, d->decoder_tid);
                     ret = avcodec_receive_frame(d->avctx, frame);
                     if (ret >= 0)
                     {
@@ -631,6 +672,7 @@ static int decoder_decode_frame(Decoder *d, AVFrame *frame, AVSubtitle *sub)
                     }
                     break;
                 case AVMEDIA_TYPE_AUDIO:
+                    printf("decoder_decode_frame() AVMEDIA_TYPE_AUDIO avcodec_recieve_frame() %s, t%d\n", d->avctx->codec->name, d->decoder_tid);
                     ret = avcodec_receive_frame(d->avctx, frame);
                     if (ret >= 0)
                     {
@@ -669,6 +711,7 @@ static int decoder_decode_frame(Decoder *d, AVFrame *frame, AVSubtitle *sub)
             else
             {
                 int old_serial = d->pkt_serial;
+                printf("decoder_decode_frame() packet_queue_get %s, t%d\n", d->avctx->codec->name, d->decoder_tid);
                 if (packet_queue_get(d->queue, d->pkt, 1, &d->pkt_serial) < 0)
                     return -1;
                 if (old_serial != d->pkt_serial)
@@ -714,17 +757,23 @@ static int decoder_decode_frame(Decoder *d, AVFrame *frame, AVSubtitle *sub)
                 fd = (FrameData *)d->pkt->opaque_ref->data;
                 fd->pkt_pos = d->pkt->pos;
             }
-
+            printf("decoder_decode_frame() avcodec_send_packet() %s, t%d\n", d->avctx->codec->name, d->decoder_tid);
             if (avcodec_send_packet(d->avctx, d->pkt) == AVERROR(EAGAIN))
             {
+                printf("Receive_frame and send_packet both returned EAGAIN, which is an API violation.\n");
                 av_log(d->avctx, AV_LOG_ERROR, "Receive_frame and send_packet both returned EAGAIN, which is an API violation.\n");
                 d->packet_pending = 1;
             }
             else
             {
+                printf("decoder_decode_frame() not error, avpacket_unref %s, t%d\n", d->avctx->codec->name, d->decoder_tid);
                 av_packet_unref(d->pkt);
             }
+            printf("decoder_decode_frame() avcodec_send_packet() DONE %s, t%d\n", d->avctx->codec->name, d->decoder_tid);
         }
+
+        // printf("decoder thread OSYieldThread %s, t%d\n", d->avctx->codec->name, d->decoder_tid);
+        // OSYieldThread();
     }
 }
 
@@ -742,6 +791,7 @@ static void frame_queue_unref_item(Frame *vp)
 
 static int frame_queue_init(FrameQueue *f, PacketQueue *pktq, int max_size, int keep_last)
 {
+    printf("frame_queue_init()\n");
     int i;
     memset(f, 0, sizeof(FrameQueue));
     if (!(f->mutex = SDL_CreateMutex()))
@@ -785,26 +835,31 @@ static void frame_queue_signal(FrameQueue *f)
 
 static Frame *frame_queue_peek(FrameQueue *f)
 {
+    printf("frame_queue_peek()\n");
     return &f->queue[(f->rindex + f->rindex_shown) % f->max_size];
 }
 
 static Frame *frame_queue_peek_next(FrameQueue *f)
 {
+    printf("frame_queue_peek_next()\n");
     return &f->queue[(f->rindex + f->rindex_shown + 1) % f->max_size];
 }
 
 static Frame *frame_queue_peek_last(FrameQueue *f)
 {
+    printf("frame_queue_peek_last()\n");
     return &f->queue[f->rindex];
 }
 
 static Frame *frame_queue_peek_writable(FrameQueue *f)
 {
+    printf("frame_queue_peek_writeable()\n");
     /* wait until we have space to put a new frame */
     SDL_LockMutex(f->mutex);
     while (f->size >= f->max_size &&
            !f->pktq->abort_request)
     {
+        printf("fqpw SDL_CondWait\n");
         SDL_CondWait(f->cond, f->mutex);
     }
     SDL_UnlockMutex(f->mutex);
@@ -817,11 +872,13 @@ static Frame *frame_queue_peek_writable(FrameQueue *f)
 
 static Frame *frame_queue_peek_readable(FrameQueue *f)
 {
+    printf("frame_queue_peek_readable()\n");
     /* wait until we have a readable a new frame */
     SDL_LockMutex(f->mutex);
     while (f->size - f->rindex_shown <= 0 &&
            !f->pktq->abort_request)
     {
+        printf("fqpr SDL_CondWait\n");
         SDL_CondWait(f->cond, f->mutex);
     }
     SDL_UnlockMutex(f->mutex);
@@ -834,6 +891,7 @@ static Frame *frame_queue_peek_readable(FrameQueue *f)
 
 static void frame_queue_push(FrameQueue *f)
 {
+    printf("frame_queue_push()\n");
     if (++f->windex == f->max_size)
         f->windex = 0;
     SDL_LockMutex(f->mutex);
@@ -844,6 +902,8 @@ static void frame_queue_push(FrameQueue *f)
 
 static void frame_queue_next(FrameQueue *f)
 {
+    printf("frame_queue_peek_next()\n");
+
     if (f->keep_last && !f->rindex_shown)
     {
         f->rindex_shown = 1;
@@ -861,12 +921,15 @@ static void frame_queue_next(FrameQueue *f)
 /* return the number of undisplayed frames in the queue */
 static int frame_queue_nb_remaining(FrameQueue *f)
 {
+    printf("frame_queue_nb_remaining %d()\n", f->size - f->rindex_shown);
+
     return f->size - f->rindex_shown;
 }
 
 /* return last shown position */
 static int64_t frame_queue_last_pos(FrameQueue *f)
 {
+    printf("frame_queue_last_pos\n");
     Frame *fp = &f->queue[f->rindex];
     if (f->rindex_shown && fp->serial == f->pktq->serial)
         return fp->pos;
@@ -876,6 +939,7 @@ static int64_t frame_queue_last_pos(FrameQueue *f)
 
 static void decoder_abort(Decoder *d, FrameQueue *fq)
 {
+    printf("decoder_abort %s\n", d->avctx->codec->name);
     packet_queue_abort(d->queue);
     frame_queue_signal(fq);
     SDL_WaitThread(d->decoder_tid, NULL);
@@ -896,18 +960,29 @@ static inline void fill_rectangle(int x, int y, int w, int h)
 
 static int realloc_texture(SDL_Texture **texture, Uint32 new_format, int new_width, int new_height, SDL_BlendMode blendmode, int init_texture)
 {
+    printf("realloc_texture() begin\n");
     Uint32 format;
     int access, w, h;
     if (!*texture || SDL_QueryTexture(*texture, &format, &access, &w, &h) < 0 || new_width != w || new_height != h || new_format != format)
     {
+        printf("realloc_texture() if(!*texture...\n");
         void *pixels;
         int pitch;
         if (*texture)
+        {
+            printf("realloc_texture() SDL_DestroyTexture\n");
             SDL_DestroyTexture(*texture);
+        }
         if (!(*texture = SDL_CreateTexture(renderer, new_format, SDL_TEXTUREACCESS_STREAMING, new_width, new_height)))
+        {
+            printf("realloc_texture() !(SDL_CreateTexture\n");
             return -1;
+        }
         if (SDL_SetTextureBlendMode(*texture, blendmode) < 0)
+        {
+            printf("realloc_texture() SDL_SetTextureBlendMode < 0\n");
             return -1;
+        }
         if (init_texture)
         {
             if (SDL_LockTexture(*texture, NULL, &pixels, &pitch) < 0)
@@ -915,9 +990,10 @@ static int realloc_texture(SDL_Texture **texture, Uint32 new_format, int new_wid
             memset(pixels, 0, pitch * new_height);
             SDL_UnlockTexture(*texture);
         }
+        printf("realloc_texture() Created %dx%d texture with %s.\n", new_width, new_height, SDL_GetPixelFormatName(new_format));
         av_log(NULL, AV_LOG_VERBOSE, "Created %dx%d texture with %s.\n", new_width, new_height, SDL_GetPixelFormatName(new_format));
-        printf("realoc_texture completed\n");
     }
+    printf("realoc_texture() completed\n");
     return 0;
 }
 
@@ -928,6 +1004,7 @@ static void calculate_display_rect(SDL_Rect *rect,
     AVRational aspect_ratio = pic_sar;
     int64_t width, height, x, y;
 
+    printf("calculate_display_rect()\n");
     if (av_cmp_q(aspect_ratio, av_make_q(0, 1)) <= 0)
         aspect_ratio = av_make_q(1, 1);
 
@@ -951,6 +1028,7 @@ static void calculate_display_rect(SDL_Rect *rect,
 
 static void get_sdl_pix_fmt_and_blendmode(int format, Uint32 *sdl_pix_fmt, SDL_BlendMode *sdl_blendmode)
 {
+    printf("get_sdl_pix_fmt_and_blendmode\n");
     int i;
     *sdl_blendmode = SDL_BLENDMODE_NONE;
     *sdl_pix_fmt = SDL_PIXELFORMAT_UNKNOWN;
@@ -971,23 +1049,28 @@ static void get_sdl_pix_fmt_and_blendmode(int format, Uint32 *sdl_pix_fmt, SDL_B
 
 static int upload_texture(SDL_Texture **tex, AVFrame *frame)
 {
+    printf("upload_texture() start\n");
     int ret = 0;
     Uint32 sdl_pix_fmt;
     SDL_BlendMode sdl_blendmode;
     get_sdl_pix_fmt_and_blendmode(frame->format, &sdl_pix_fmt, &sdl_blendmode);
     if (realloc_texture(tex, sdl_pix_fmt == SDL_PIXELFORMAT_UNKNOWN ? SDL_PIXELFORMAT_ARGB8888 : sdl_pix_fmt, frame->width, frame->height, sdl_blendmode, 0) < 0)
         return -1;
+
+    printf("upload_texture() switch %d\n", sdl_pix_fmt);
     switch (sdl_pix_fmt)
     {
     case SDL_PIXELFORMAT_IYUV:
         if (frame->linesize[0] > 0 && frame->linesize[1] > 0 && frame->linesize[2] > 0)
         {
+            printf("upload_texture() SDL_UpdateYUVTexture1 %d\n", sdl_pix_fmt);
             ret = SDL_UpdateYUVTexture(*tex, NULL, frame->data[0], frame->linesize[0],
                                        frame->data[1], frame->linesize[1],
                                        frame->data[2], frame->linesize[2]);
         }
         else if (frame->linesize[0] < 0 && frame->linesize[1] < 0 && frame->linesize[2] < 0)
         {
+            printf("upload_texture() SDL_UpdateYUVTexture2 %d\n", sdl_pix_fmt);
             ret = SDL_UpdateYUVTexture(*tex, NULL, frame->data[0] + frame->linesize[0] * (frame->height - 1), -frame->linesize[0],
                                        frame->data[1] + frame->linesize[1] * (AV_CEIL_RSHIFT(frame->height, 1) - 1), -frame->linesize[1],
                                        frame->data[2] + frame->linesize[2] * (AV_CEIL_RSHIFT(frame->height, 1) - 1), -frame->linesize[2]);
@@ -995,20 +1078,24 @@ static int upload_texture(SDL_Texture **tex, AVFrame *frame)
         else
         {
             av_log(NULL, AV_LOG_ERROR, "Mixed negative and positive linesizes are not supported.\n");
+            printf("upload_texture() ERR Mixed negative and positive linesizes are not supported.\n");
             return -1;
         }
         break;
     default:
         if (frame->linesize[0] < 0)
         {
+            printf("upload_texture() SDL_UpdateYUVTexture3 %d\n", sdl_pix_fmt);
             ret = SDL_UpdateTexture(*tex, NULL, frame->data[0] + frame->linesize[0] * (frame->height - 1), -frame->linesize[0]);
         }
         else
         {
+            printf("upload_texture() SDL_UpdateYUVTexture4 %d\n", sdl_pix_fmt);
             ret = SDL_UpdateTexture(*tex, NULL, frame->data[0], frame->linesize[0]);
         }
         break;
     }
+    printf("upload_texture() done\n");
     return ret;
 }
 
@@ -1031,7 +1118,9 @@ static void set_sdl_yuv_conversion_mode(AVFrame *frame)
         else if (frame->colorspace == AVCOL_SPC_BT470BG || frame->colorspace == AVCOL_SPC_SMPTE170M)
             mode = SDL_YUV_CONVERSION_BT601;
     }
+    printf("SDL_SetYUVConversionMode\n");
     SDL_SetYUVConversionMode(mode); /* FIXME: no support for linear transfer */
+    printf("SDL_SetYUVConversionMode done\n");
 #endif
 }
 
@@ -1041,6 +1130,7 @@ static void video_image_display(VideoState *is)
     Frame *sp = NULL;
     SDL_Rect rect;
 
+    printf("Vid    start T%d\n", is->read_tid);
     vp = frame_queue_peek_last(&is->pictq);
     if (vk_renderer)
     {
@@ -1050,6 +1140,8 @@ static void video_image_display(VideoState *is)
 
     if (is->subtitle_st)
     {
+
+        printf("vid    is->subtitle T%d\n", is->read_tid);
         if (frame_queue_nb_remaining(&is->subpq) > 0)
         {
             sp = frame_queue_peek(&is->subpq);
@@ -1066,6 +1158,7 @@ static void video_image_display(VideoState *is)
                         sp->width = vp->width;
                         sp->height = vp->height;
                     }
+                    printf("vid    realloc_texture T%d\n", is->read_tid);
                     if (realloc_texture(&is->sub_texture, SDL_PIXELFORMAT_ARGB8888, sp->width, sp->height, SDL_BLENDMODE_BLEND, 1) < 0)
                         return;
 
@@ -1084,11 +1177,13 @@ static void video_image_display(VideoState *is)
                                                                    0, NULL, NULL, NULL);
                         if (!is->sub_convert_ctx)
                         {
+                            printf("vid    Cannot initialize the conversion context\n");
                             av_log(NULL, AV_LOG_FATAL, "Cannot initialize the conversion context\n");
                             return;
                         }
                         if (!SDL_LockTexture(is->sub_texture, (SDL_Rect *)sub_rect, (void **)pixels, pitch))
                         {
+                            printf("vid    sws_scale T%d\n", is->read_tid);
                             sws_scale(is->sub_convert_ctx, (const uint8_t *const *)sub_rect->data, sub_rect->linesize,
                                       0, sub_rect->h, pixels, pitch);
                             SDL_UnlockTexture(is->sub_texture);
@@ -1103,20 +1198,28 @@ static void video_image_display(VideoState *is)
     }
 
     calculate_display_rect(&rect, is->xleft, is->ytop, is->width, is->height, vp->width, vp->height, vp->sar);
+    printf("Vid    vp->frame T%d\n", is->read_tid);
     set_sdl_yuv_conversion_mode(vp->frame);
 
     if (!vp->uploaded)
     {
+        printf("Vid    if !uploaded upload_texture T%d\n", is->read_tid);
         if (upload_texture(&is->vid_texture, vp->frame) < 0)
         {
+            printf("Vid     upload_texture <0, set_sdl_yuv_conversion_mode(NULL), return\n");
             set_sdl_yuv_conversion_mode(NULL);
             return;
         }
+        printf("Vid    upload_texture >=0  T%d\n", is->read_tid);
         vp->uploaded = 1;
         vp->flip_v = vp->frame->linesize[0] < 0;
     }
 
+    printf("Vid    SDL_RenderCopyEx T%d\n", is->read_tid);
+    SDL_ClearError();
     SDL_RenderCopyEx(renderer, is->vid_texture, NULL, &rect, 0, NULL, vp->flip_v ? SDL_FLIP_VERTICAL : 0);
+    SDL_GetError();
+    printf("Vid    SDL_RenderCopyEx set_sdl_yuv_conversion_mode(NULL)%s\n", SDL_GetError());
     set_sdl_yuv_conversion_mode(NULL);
     if (sp)
     {
@@ -1146,6 +1249,7 @@ static inline int compute_mod(int a, int b)
 
 static void video_audio_display(VideoState *s)
 {
+    printf("vad   video_audio_display()\n");
     int i, i_start, x, y1, y, ys, delay, n, nb_display_channels;
     int ch, channels, h, h2;
     int64_t time_diff;
@@ -1324,6 +1428,7 @@ static void stream_component_close(VideoState *is, int stream_index)
     AVFormatContext *ic = is->ic;
     AVCodecParameters *codecpar;
 
+    printf("stream_component_close T%d\n", is->read_tid);
     if (stream_index < 0 || stream_index >= ic->nb_streams)
         return;
     codecpar = ic->streams[stream_index]->codecpar;
@@ -1386,6 +1491,7 @@ static void stream_close(VideoState *is)
     is->abort_request = 1;
     SDL_WaitThread(is->read_tid, NULL);
 
+    printf("stream_close %s\n", is->read_tid);
     /* close each stream */
     if (is->audio_stream >= 0)
         stream_component_close(is, is->audio_stream);
@@ -1418,6 +1524,7 @@ static void stream_close(VideoState *is)
 
 static void do_exit(VideoState *is)
 {
+    printf("do_exit \n");
     if (is)
     {
         stream_close(is);
@@ -1441,12 +1548,14 @@ static void do_exit(VideoState *is)
         printf("\n");
     SDL_Quit();
     av_log(NULL, AV_LOG_QUIET, "%s", "");
-    exit(0);
+    printf("exit(0)\n");
+    // exit(0);
 }
 
 static void sigterm_handler(int sig)
 {
-    exit(123);
+    printf("exit(123)");
+    // exit(123);
 }
 
 static void set_default_window_size(int width, int height, AVRational sar)
@@ -1463,6 +1572,8 @@ static void set_default_window_size(int width, int height, AVRational sar)
 
 static int video_open(VideoState *is)
 {
+
+    printf("video_open()");
     int w, h;
 
     w = screen_width ? screen_width : default_width;
@@ -1751,13 +1862,15 @@ static void video_refresh(void *opaque, double *remaining_time)
     if (is->video_st)
     {
     retry:
+        printf("video refresh retry T%d\n", is->read_tid);
         if (frame_queue_nb_remaining(&is->pictq) == 0)
         {
+            printf("video refresh frame_queue_nb_remaining==0 T%d\n", is->read_tid);
             // nothing to do, no picture to display in the queue
         }
         else
         {
-            printf("video refresh, frame_queue_nb_remaining >0\n");
+            printf("video refresh, frame_queue_nb_remaining >0 T%d\n", is->read_tid);
             double last_duration, duration, delay;
             Frame *vp, *lastvp;
 
@@ -1785,6 +1898,7 @@ static void video_refresh(void *opaque, double *remaining_time)
             if (time < is->frame_timer + delay)
             {
                 *remaining_time = FFMIN(is->frame_timer + delay - time, *remaining_time);
+                printf("video_refresh: time< frame_timer+delay\n");
                 goto display;
             }
 
@@ -1799,6 +1913,7 @@ static void video_refresh(void *opaque, double *remaining_time)
 
             if (frame_queue_nb_remaining(&is->pictq) > 1)
             {
+                printf("video_refresh frame_queue_nb_remaining() T%d\n", is->read_tid);
                 Frame *nextvp = frame_queue_peek_next(&is->pictq);
                 duration = vp_duration(is, vp, nextvp);
                 if (!is->step && (framedrop > 0 || (framedrop && get_master_sync_type(is) != AV_SYNC_VIDEO_MASTER)) && time > is->frame_timer + duration)
@@ -1848,7 +1963,7 @@ static void video_refresh(void *opaque, double *remaining_time)
                 }
             }
 
-            printf("video refresh, frame_queue_next\n");
+            printf("video refresh, frame_queue_next T%d\n", is->read_tid);
             frame_queue_next(&is->pictq);
             is->force_refresh = 1;
 
@@ -1857,11 +1972,12 @@ static void video_refresh(void *opaque, double *remaining_time)
         }
     display:
         /* display picture */
-        printf("display: %d %d %d %d\n",
+        printf("video_refresh display: %d %d %d %d T%d\n",
                display_disable,
                is->force_refresh,
                is->show_mode == SHOW_MODE_VIDEO,
-               is->pictq.rindex_shown);
+               is->pictq.rindex_shown,
+               is->read_tid);
         if (!display_disable && is->force_refresh && is->show_mode == SHOW_MODE_VIDEO && is->pictq.rindex_shown)
             video_display(is);
     }
@@ -1952,7 +2068,7 @@ static int queue_picture(VideoState *is, AVFrame *src_frame, double pts, double 
 static int get_video_frame(VideoState *is, AVFrame *frame)
 {
     int got_picture;
-
+    printf("get_video_frame() start T%d\n", is->read_tid);
     if ((got_picture = decoder_decode_frame(&is->viddec, frame, NULL)) < 0)
         return -1;
 
@@ -2046,6 +2162,7 @@ static int configure_video_filters(AVFilterGraph *graph, VideoState *is, const c
     int i, j;
     AVBufferSrcParameters *par = av_buffersrc_parameters_alloc();
 
+    printf("configure_video_filters (!par %d) T%d\n", !par, is->read_tid);
     if (!par)
         return AVERROR(ENOMEM);
 
@@ -2072,6 +2189,8 @@ static int configure_video_filters(AVFilterGraph *graph, VideoState *is, const c
     }
     if (strlen(sws_flags_str))
         sws_flags_str[strlen(sws_flags_str) - 1] = '\0';
+
+    printf("cvf av_dict_iterate() %s\n", sws_flags_str);
 
     graph->scale_sws_opts = av_strdup(sws_flags_str);
 
@@ -2102,22 +2221,31 @@ static int configure_video_filters(AVFilterGraph *graph, VideoState *is, const c
 
     filt_out = avfilter_graph_alloc_filter(graph, avfilter_get_by_name("buffersink"),
                                            "ffplay_buffersink");
+
     if (!filt_out)
     {
+        printf("cvf !filt_out\n");
         ret = AVERROR(ENOMEM);
         goto fail;
     }
 
     if ((ret = av_opt_set_array(filt_out, "pixel_formats", AV_OPT_SEARCH_CHILDREN,
                                 0, nb_pix_fmts, AV_OPT_TYPE_PIXEL_FMT, pix_fmts)) < 0)
+    {
+        printf("cvf av_opt_set_array pixel_formats\n");
         goto fail;
+    }
     if (!vk_renderer &&
         (ret = av_opt_set_array(filt_out, "colorspaces", AV_OPT_SEARCH_CHILDREN,
                                 0, FF_ARRAY_ELEMS(sdl_supported_color_spaces),
                                 AV_OPT_TYPE_INT, sdl_supported_color_spaces)) < 0)
+    {
+        printf("cvf av_opt_set_array colorspaces\n");
         goto fail;
+    }
 
     ret = avfilter_init_dict(filt_out, NULL);
+    printf("cvf avfilter_init_dict() %d\n", ret);
     if (ret < 0)
         goto fail;
 
@@ -2145,6 +2273,7 @@ static int configure_video_filters(AVFilterGraph *graph, VideoState *is, const c
 
     if (autorotate)
     {
+        printf("cvf autorotate\n");
         double theta = 0.0;
         int32_t *displaymatrix = NULL;
         AVFrameSideData *sd = av_frame_get_side_data(frame, AV_FRAME_DATA_DISPLAYMATRIX);
@@ -2189,7 +2318,10 @@ static int configure_video_filters(AVFilterGraph *graph, VideoState *is, const c
     }
 
     if ((ret = configure_filtergraph(graph, vfilters, filt_src, last_filter)) < 0)
+    {
+        printf("cvf configure_filter_graph()\n");
         goto fail;
+    }
 
     is->in_video_filter = filt_src;
     is->out_video_filter = filt_out;
@@ -2289,11 +2421,13 @@ static int audio_thread(void *arg)
 
     do
     {
+        printf("audio_thread attempt decoder_decode_frame()T%d\n", is->read_tid);
         if ((got_frame = decoder_decode_frame(&is->auddec, frame, NULL)) < 0)
             goto the_end;
 
         if (got_frame)
         {
+            printf("audio_thread got_frame() T%d\n", is->read_tid);
             tb = (AVRational){1, frame->sample_rate};
 
             reconfigure =
@@ -2303,6 +2437,7 @@ static int audio_thread(void *arg)
                 is->audio_filter_src.freq != frame->sample_rate ||
                 is->auddec.pkt_serial != last_serial;
 
+            printf("audio_thread reconfigure %d()\n", reconfigure);
             if (reconfigure)
             {
                 char buf1[1024], buf2[1024];
@@ -2315,16 +2450,21 @@ static int audio_thread(void *arg)
 
                 is->audio_filter_src.fmt = frame->format;
                 ret = av_channel_layout_copy(&is->audio_filter_src.ch_layout, &frame->ch_layout);
+                printf("audio_thread av_channel_layout_copy %d()\n", ret);
                 if (ret < 0)
                     goto the_end;
                 is->audio_filter_src.freq = frame->sample_rate;
                 last_serial = is->auddec.pkt_serial;
 
-                if ((ret = configure_audio_filters(is, afilters, 1)) < 0)
+                ret = configure_audio_filters(is, afilters, 1);
+                printf("audio_thread configure_audio_filters %d()\n", ret);
+                if (ret < 0)
                     goto the_end;
             }
 
-            if ((ret = av_buffersrc_add_frame(is->in_audio_filter, frame)) < 0)
+            ret = av_buffersrc_add_frame(is->in_audio_filter, frame);
+            printf("audio_thread av_buffersrc_add_frame %d()\n", ret);
+            if (ret < 0)
                 goto the_end;
 
             while ((ret = av_buffersink_get_frame_flags(is->out_audio_filter, frame, 0)) >= 0)
@@ -2345,6 +2485,7 @@ static int audio_thread(void *arg)
                 if (is->audioq.serial != is->auddec.pkt_serial)
                     break;
             }
+            printf("audio_thread endwhile (ret == AVERROR_EOF) %d()\n", (ret == AVERROR_EOF));
             if (ret == AVERROR_EOF)
                 is->auddec.finished = is->auddec.pkt_serial;
         }
@@ -2364,6 +2505,12 @@ static int decoder_start(Decoder *d, int (*fn)(void *), const char *thread_name,
         av_log(NULL, AV_LOG_ERROR, "SDL_CreateThread(): %s\n", SDL_GetError());
         return AVERROR(ENOMEM);
     }
+#ifdef __WIIU__
+    // OSThread* native_handle = (OSThread*) SDL_GetThreadID(d->decoder_tid);
+    // printf("SDL_CreateThread(%d) and OSSetThreadRunQuantum()", d->decoder_tid);
+    // OSSetThreadRunQuantum(native_handle, 1000);
+    // printf("SDL_CreateThread(%d) and OSSetThreadRunQuantum() DONE", d->decoder_tid);
+#endif
     return 0;
 }
 
@@ -2385,12 +2532,14 @@ static int video_thread(void *arg)
     int last_serial = -1;
     int last_vfilter_idx = 0;
 
+    printf("video_thread() T%d\n", is->read_tid);
     if (!frame)
         return AVERROR(ENOMEM);
 
     for (;;)
     {
         ret = get_video_frame(is, frame);
+        printf("video_thread() get_video_frame %d \n", ret);
         if (ret < 0)
             goto the_end;
         if (!ret)
@@ -2400,6 +2549,12 @@ static int video_thread(void *arg)
         {
             av_log(NULL, AV_LOG_DEBUG,
                    "Video frame changed from size:%dx%d format:%s serial:%d to size:%dx%d format:%s serial:%d\n",
+                   last_w, last_h,
+                   (const char *)av_x_if_null(av_get_pix_fmt_name(last_format), "none"), last_serial,
+                   frame->width, frame->height,
+                   (const char *)av_x_if_null(av_get_pix_fmt_name(frame->format), "none"), is->viddec.pkt_serial);
+
+            printf("Video frame changed from size:%dx%d format:%s serial:%d to size:%dx%d format:%s serial:%d\n",
                    last_w, last_h,
                    (const char *)av_x_if_null(av_get_pix_fmt_name(last_format), "none"), last_serial,
                    frame->width, frame->height,
@@ -2414,6 +2569,7 @@ static int video_thread(void *arg)
             graph->nb_threads = filter_nbthreads;
             if ((ret = configure_video_filters(graph, is, vfilters_list ? vfilters_list[is->vfilter_idx] : NULL, frame)) < 0)
             {
+                printf("video_thread() configure_video_filters FF_QUIT_EVENT\n");
                 SDL_Event event;
                 event.type = FF_QUIT_EVENT;
                 event.user.data1 = is;
@@ -2431,6 +2587,7 @@ static int video_thread(void *arg)
         }
 
         ret = av_buffersrc_add_frame(filt_in, frame);
+        printf("video_thread() av_buffersrc_add_frame %d \n", ret);
         if (ret < 0)
             goto the_end;
 
@@ -2479,6 +2636,7 @@ static int subtitle_thread(void *arg)
     int got_subtitle;
     double pts;
 
+    printf("subtitle_thread() T%d\n", is->read_tid);
     for (;;)
     {
         if (!(sp = frame_queue_peek_writable(&is->subpq)))
@@ -2595,6 +2753,7 @@ static int audio_decode_frame(VideoState *is)
     int wanted_nb_samples;
     Frame *af;
 
+    printf("audio_decode_frame start T%d\n", is->read_tid);
     if (is->paused)
         return -1;
 
@@ -2715,6 +2874,7 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
     VideoState *is = opaque;
     int audio_size, len1;
 
+    printf("sdl_audio_callback start T%d\n", is->read_tid);
     audio_callback_time = av_gettime_relative();
 
     while (len > 0)
@@ -2769,6 +2929,7 @@ static int audio_open(void *opaque, AVChannelLayout *wanted_channel_layout, int 
     int next_sample_rate_idx = FF_ARRAY_ELEMS(next_sample_rates) - 1;
     int wanted_nb_channels = wanted_channel_layout->nb_channels;
 
+    printf("> audio_open start\n");
     env = SDL_getenv("SDL_AUDIO_CHANNELS");
     if (env)
     {
@@ -2787,6 +2948,7 @@ static int audio_open(void *opaque, AVChannelLayout *wanted_channel_layout, int 
     if (wanted_spec.freq <= 0 || wanted_spec.channels <= 0)
     {
         av_log(NULL, AV_LOG_ERROR, "Invalid sample rate or channel count!\n");
+        printf("> audio_open Invalid sample rate or channel count!\n");
         return -1;
     }
     while (next_sample_rate_idx && next_sample_rates[next_sample_rate_idx] >= wanted_spec.freq)
@@ -2798,6 +2960,8 @@ static int audio_open(void *opaque, AVChannelLayout *wanted_channel_layout, int 
     wanted_spec.userdata = opaque;
     while (!(audio_dev = SDL_OpenAudioDevice(NULL, 0, &wanted_spec, &spec, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | SDL_AUDIO_ALLOW_CHANNELS_CHANGE)))
     {
+        printf("> audio_open SDL_OpenAudioDevice (%d channels, %d Hz): %s\n",
+               wanted_spec.channels, wanted_spec.freq, SDL_GetError());
         av_log(NULL, AV_LOG_WARNING, "SDL_OpenAudio (%d channels, %d Hz): %s\n",
                wanted_spec.channels, wanted_spec.freq, SDL_GetError());
         wanted_spec.channels = next_nb_channels[FFMIN(7, wanted_spec.channels)];
@@ -2809,6 +2973,7 @@ static int audio_open(void *opaque, AVChannelLayout *wanted_channel_layout, int 
             {
                 av_log(NULL, AV_LOG_ERROR,
                        "No more combinations to try, audio open failed\n");
+                printf("> audio_open No more combinations to try, audio open failed\n");
                 return -1;
             }
         }
@@ -2818,6 +2983,7 @@ static int audio_open(void *opaque, AVChannelLayout *wanted_channel_layout, int 
     {
         av_log(NULL, AV_LOG_ERROR,
                "SDL advised audio format %d is not supported!\n", spec.format);
+        printf("> audio_open   SDL advised audio format %d is not supported!\n", spec.format);
         return -1;
     }
     if (spec.channels != wanted_spec.channels)
@@ -2826,6 +2992,7 @@ static int audio_open(void *opaque, AVChannelLayout *wanted_channel_layout, int 
         av_channel_layout_default(wanted_channel_layout, spec.channels);
         if (wanted_channel_layout->order != AV_CHANNEL_ORDER_NATIVE)
         {
+            printf("> audio_open SDL advised channel count %d is not supported!\n", spec.channels);
             av_log(NULL, AV_LOG_ERROR,
                    "SDL advised channel count %d is not supported!\n", spec.channels);
             return -1;
@@ -2834,15 +3001,18 @@ static int audio_open(void *opaque, AVChannelLayout *wanted_channel_layout, int 
 
     audio_hw_params->fmt = AV_SAMPLE_FMT_S16;
     audio_hw_params->freq = spec.freq;
+    printf("> audio_open av_channel_layout_copy\n");
     if (av_channel_layout_copy(&audio_hw_params->ch_layout, wanted_channel_layout) < 0)
         return -1;
     audio_hw_params->frame_size = av_samples_get_buffer_size(NULL, audio_hw_params->ch_layout.nb_channels, 1, audio_hw_params->fmt, 1);
     audio_hw_params->bytes_per_sec = av_samples_get_buffer_size(NULL, audio_hw_params->ch_layout.nb_channels, audio_hw_params->freq, audio_hw_params->fmt, 1);
     if (audio_hw_params->bytes_per_sec <= 0 || audio_hw_params->frame_size <= 0)
     {
+        printf("> audio_open av_samples_get_buffer_size failed\n");
         av_log(NULL, AV_LOG_ERROR, "av_samples_get_buffer_size failed\n");
         return -1;
     }
+    printf("> audio_open success\n");
     return spec.size;
 }
 
@@ -2899,15 +3069,21 @@ static int stream_component_open(VideoState *is, int stream_index)
     if (stream_index < 0 || stream_index >= ic->nb_streams)
         return -1;
 
+    printf("sco avcodec_alloc_context3()\n");
     avctx = avcodec_alloc_context3(NULL);
     if (!avctx)
+    {
+        printf("sco avcodec_alloc_context3() error\n");
         return AVERROR(ENOMEM);
+    }
 
+    printf("sco avcodec_parameters_to_context()\n");
     ret = avcodec_parameters_to_context(avctx, ic->streams[stream_index]->codecpar);
     if (ret < 0)
         goto fail;
     avctx->pkt_timebase = ic->streams[stream_index]->time_base;
 
+    printf("sco avcodec_find_decoder() %d\n", avctx->codec_id);
     codec = avcodec_find_decoder(avctx->codec_id);
 
     switch (avctx->codec_type)
@@ -2929,6 +3105,7 @@ static int stream_component_open(VideoState *is, int stream_index)
         codec = avcodec_find_decoder_by_name(forced_codec_name);
     if (!codec)
     {
+        printf("sco No decoder could be found for codec %s\n", avcodec_get_name(avctx->codec_id));
         if (forced_codec_name)
             av_log(NULL, AV_LOG_WARNING,
                    "No codec could be found with name '%s'\n", forced_codec_name);
@@ -3001,8 +3178,12 @@ static int stream_component_open(VideoState *is, int stream_index)
     }
 
         /* prepare audio output */
+        printf("sco audio_open %d", ret);
         if ((ret = audio_open(is, &ch_layout, sample_rate, &is->audio_tgt)) < 0)
+        {
+            printf("sco audio_open %d", ret);
             goto fail;
+        }
         is->audio_hw_buf_size = ret;
         is->audio_src = is->audio_tgt;
         is->audio_buf_size = 0;
@@ -3054,6 +3235,7 @@ static int stream_component_open(VideoState *is, int stream_index)
     goto out;
 
 fail:
+    printf("sco stream_component_open fail %s\n", avcodec_get_name(avctx->codec_id));
     avcodec_free_context(&avctx);
 out:
     av_channel_layout_uninit(&ch_layout);
@@ -3218,9 +3400,6 @@ static int read_thread(void *arg)
     if (show_status)
         av_dump_format(ic, 0, is->filename, 0);
 
-    printf("av_dump_format start\n");
-    av_dump_format(ic, 0, is->filename, 0);
-    printf("av_dump_format  end\n");
 
     for (i = 0; i < ic->nb_streams; i++)
     {
@@ -3336,7 +3515,7 @@ static int read_thread(void *arg)
 
         if (is->seek_req)
         {
-            printf("if (is->seek_req)\n");
+            printf("read_thread if (is->seek_req) T%d\n", is->read_tid);
             int64_t seek_target = is->seek_pos;
             int64_t seek_min = is->seek_rel > 0 ? seek_target - is->seek_rel + 2 : INT64_MIN;
             int64_t seek_max = is->seek_rel < 0 ? seek_target - is->seek_rel - 2 : INT64_MAX;
@@ -3374,11 +3553,15 @@ static int read_thread(void *arg)
         }
         if (is->queue_attachments_req)
         {
-            printf("is->queue_attachments_req\n");
+            printf("read_thread is->queue_attachments_req T%d\n", is->read_tid);
             if (is->video_st && is->video_st->disposition & AV_DISPOSITION_ATTACHED_PIC)
             {
                 if ((ret = av_packet_ref(pkt, &is->video_st->attached_pic)) < 0)
+                {
+                    printf("read_thread av_packet_ref fail T%d\n", is->read_tid);
                     goto fail;
+                }
+
                 packet_queue_put(&is->videoq, pkt);
                 packet_queue_put_nullpacket(&is->videoq, pkt, is->video_stream);
             }
@@ -3391,7 +3574,7 @@ static int read_thread(void *arg)
                                                                                          stream_has_enough_packets(is->video_st, is->video_stream, &is->videoq) &&
                                                                                          stream_has_enough_packets(is->subtitle_st, is->subtitle_stream, &is->subtitleq))))
         {
-            printf("if no infinite_buffer\n");
+            printf("read_thread if no infinite_buffer T%d\n", is->read_tid);
             /* wait 10 ms */
             SDL_LockMutex(wait_mutex);
             SDL_CondWaitTimeout(is->continue_read_thread, wait_mutex, 10);
@@ -3409,12 +3592,14 @@ static int read_thread(void *arg)
             else if (autoexit)
             {
                 ret = AVERROR_EOF;
+                printf("read_thread autoexit AVERROR_EOF\n");
                 goto fail;
             }
         }
         ret = av_read_frame(ic, pkt);
         if (ret < 0)
         {
+            printf("read_thread av_read_frame <0 T%d\n", is->read_tid);
             if ((ret == AVERROR_EOF || avio_feof(ic->pb)) && !is->eof)
             {
                 if (is->video_stream >= 0)
@@ -3427,11 +3612,16 @@ static int read_thread(void *arg)
             }
             if (ic->pb && ic->pb->error)
             {
+                printf("read_thread ic->pb && ic->pb->error %d \n", (ic->pb && ic->pb->error));
                 if (autoexit)
+                {
+                    printf("read_thread ic->pb && ic->pb->error  if autoexit fail\n");
                     goto fail;
+                }
                 else
                     break;
             }
+            printf("SDL_LockMutex, SDL_CondWaitTimeout SDL_UnlockMutex continue T%d\n", is->read_tid);
             SDL_LockMutex(wait_mutex);
             SDL_CondWaitTimeout(is->continue_read_thread, wait_mutex, 10);
             SDL_UnlockMutex(wait_mutex);
@@ -3442,7 +3632,7 @@ static int read_thread(void *arg)
             is->eof = 0;
         }
         char strbuffer[1024];
-        snprintf(strbuffer, 1024, "av_read_frame >=0 ");
+        snprintf(strbuffer, 1024, "read_thread av_read_frame >=0 ");
         /* check if packet is in play range specified by user, then queue, otherwise discard */
         stream_start_time = ic->streams[pkt->stream_index]->start_time;
         pkt_ts = pkt->pts == AV_NOPTS_VALUE ? pkt->dts : pkt->pts;
@@ -3453,8 +3643,8 @@ static int read_thread(void *arg)
                                 ((double)duration / 1000000);
         if (pkt->stream_index == is->audio_stream && pkt_in_play_range)
         {
-            packet_queue_put(&is->audioq, pkt);
             strncat(strbuffer, "put audio ", 12);
+            packet_queue_put(&is->audioq, pkt);
         }
         else if (pkt->stream_index == is->video_stream && pkt_in_play_range && !(is->video_st->disposition & AV_DISPOSITION_ATTACHED_PIC))
         {
@@ -3471,21 +3661,26 @@ static int read_thread(void *arg)
             av_packet_unref(pkt);
             strncat(strbuffer, "unref ", 12);
         }
-        strncat(strbuffer, "\n", 12);
-        printf("%s", strbuffer);
+        printf("%s T%d\n", strbuffer, is->read_tid);
+        // printf("read thread OSYieldThread\n");
+        // OSYieldThread();
     }
-    printf("exited readthread main loop\n");
+    printf("read_thread exited main loop\n");
 
     ret = 0;
 fail:
-    if (ic && !is->ic)
-        avformat_close_input(&ic);
 
+    if (ic && !is->ic)
+    {
+        printf("read_thread fail: avformat_close_input");
+        avformat_close_input(&ic);
+    }
     av_packet_free(&pkt);
     if (ret != 0)
     {
         SDL_Event event;
 
+        printf("read_thread fail: FF_QUIT_EVENT");
         event.type = FF_QUIT_EVENT;
         event.user.data1 = is;
         SDL_PushEvent(&event);
@@ -3555,7 +3750,12 @@ static VideoState *stream_open(const char *filename,
         stream_close(is);
         return NULL;
     }
-    printf("SDL_CreateThread - readthread created\n");
+#ifdef __WIIU__
+    // OSThread* native_handle = (OSThread*) SDL_GetThreadID(is->read_tid);
+    // printf("read_thread SDL_CreateThread(%d) & OSSetThreadRunQuantum()\n", is->read_tid);
+    // OSSetThreadRunQuantum(native_handle, 1000);
+    // printf("read_thread SDL_CreateThread(%d) & OSSetThreadRunQuantum() DONE\n", is->read_tid);
+#endif
     return is;
 }
 
@@ -3931,6 +4131,7 @@ static void event_loop(VideoState *cur_stream)
             break;
         case SDL_QUIT:
         case FF_QUIT_EVENT:
+            printf("FF_QUIT_EVENT received\n");
             do_exit(cur_stream);
             break;
         default:
@@ -4202,6 +4403,9 @@ int main(int argc, char **argv)
     }
     if (display_disable)
         flags &= ~SDL_INIT_VIDEO;
+#ifdef __WIIU_
+    // av_log_set_callback(custom_av_log);   // for debugging
+#endif
     if (SDL_Init(flags))
     {
         av_log(NULL, AV_LOG_FATAL, "Could not initialize SDL - %s\n", SDL_GetError());
@@ -4210,7 +4414,9 @@ int main(int argc, char **argv)
     }
     printf("SDL_Init display_disable=%d\n", display_disable);
 
-    /* verified this works!!  - something strange about their SDL
+    /* verified this works!!
+    The above code doesn't seem to initialize the screen.
+    I had to add - something strange about their SDL
     // Create window and renderer
     printf("test SDL_CreateWindowAndRenderer()\n");
     SDL_CreateWindowAndRenderer(640, 480, SDL_WINDOW_SHOWN,
@@ -4235,6 +4441,7 @@ int main(int argc, char **argv)
 
     if (!display_disable)
     {
+        /*
         int flags = SDL_WINDOW_HIDDEN;
         if (alwaysontop)
 #if SDL_VERSION_ATLEAST(2, 0, 5)
@@ -4270,11 +4477,12 @@ int main(int argc, char **argv)
                 enable_vulkan = 0;
             }
         }
-        /*
+
         window = SDL_CreateWindow(program_name, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, default_width, default_height, flags);
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
         if (!window)
         {
+            printf("Failed to create window\n");
             av_log(NULL, AV_LOG_FATAL, "Failed to create window: %s", SDL_GetError());
             do_exit(NULL);
         }
@@ -4306,45 +4514,52 @@ int main(int argc, char **argv)
             renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
             if (!renderer)
             {
+                printf("Failed to initialize a hardware accelerated renderer: %s\n", SDL_GetError());
                 av_log(NULL, AV_LOG_WARNING, "Failed to initialize a hardware accelerated renderer: %s\n", SDL_GetError());
                 renderer = SDL_CreateRenderer(window, -1, 0);
             }
             if (renderer)
             {
-                if (!SDL_GetRendererInfo(renderer, &renderer_info))
+                if (!SDL_GetRendererInfo(renderer, &renderer_info)) {
+                    printf("Initialized %s renderer.\n", renderer_info.name);
                     av_log(NULL, AV_LOG_VERBOSE, "Initialized %s renderer.\n", renderer_info.name);
+                }
             }
             if (!renderer || !renderer_info.num_texture_formats)
             {
                 av_log(NULL, AV_LOG_FATAL, "Failed to create window or renderer: %s", SDL_GetError());
+                printf("main Failed to create window or renderer %s\n", SDL_GetError());
                 do_exit(NULL);
             }
-            printf("SDL_CreateRenderer\n");
-
-            SDL_SetRenderDrawColor(renderer, 0, 128, 128, 255);
-            SDL_RenderClear(renderer);
-            SDL_RenderPresent(renderer);
-            printf("first SDL_SetRenderDrawColor.. SDL_RenderPresent\n");
         }
-            */
+        */
+        /* at the moment, above code doesn't seem to create  window and render object
+           such that the  SDL_SetRenderDrawColor updates the screen.
+           However, when I comment the above out and replace it with the following,
+           the SDL_SetRenderDrawColor does update the screen..
+        */
+        // window = SDL_CreateWindow(program_name, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, default_width, default_height, flags);
+        // renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
         SDL_CreateWindowAndRenderer(640, 480, SDL_WINDOW_SHOWN,
                                     &window, &renderer);
         SDL_SetRenderDrawColor(renderer, 0, 128, 128, 255);
         SDL_RenderClear(renderer);
         SDL_RenderPresent(renderer);
-        printf("first SDL_SetRenderDrawColor.. SDL_RenderPresent\n");
+        printf("custom create window/renderer , do first SDL_SetRenderDrawColor.. SDL_RenderPresent\n");
     }
 
     is = stream_open(input_filename, file_iformat);
     if (!is)
     {
         av_log(NULL, AV_LOG_FATAL, "Failed to initialize VideoState!\n");
+        printf("Failed to initialize VideoState\n");
         do_exit(NULL);
     }
 
     printf("Finished Stream open, starting event_loop\n");
     event_loop(is);
 
+    printf("exited event_loop\n");
     /* never returns */
 
     return 0;

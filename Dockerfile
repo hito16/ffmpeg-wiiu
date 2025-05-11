@@ -6,9 +6,9 @@
 # ex. cd ..; docker build -t ffmpeg-wiiu ffmpeg-wiiu
 # then extracting other depencencies in parallel directories
 # ex. cd ..; ls 
-#      ffmpeg/
+#      FFmpeg-master/   <= ffmpeg source  
 #      ffmpeg-wiiu/
-#      libromfs/
+#      libromfs-wiiu-master/
 #       ....
 # then you can get your hands dirty by logging into the container
 #   docker run -it --rm -v ${PWD}:/project --name ffmpeg-wiiu ffmpeg-wiiu /bin/bash
@@ -18,7 +18,11 @@ FROM ghcr.io/wiiu-env/devkitppc:20241128
 # satisfy ffmpeg configure requirement
 RUN apt-get update && apt-get install -y gcc g++ make 
 
-# build libromfs if you downloaded the snapshot zip to libromfs-wiiu-master
-RUN [ -d libromfs-wiiu-master ] && ( cd libromfs-wiiu-master/; make clean; make; make install)
+# temporarily add while we learn
+RUN apt-get install -y vim file
+
+# Assuming you downloaded libromfs-wiiu-master and installed in adjacent dir
+ENV FFMPEG_SRC=/project/FFmpeg-master
+ENV PKG_CONFIG_PATH="$DEVKITPRO/portlibs/ppc/lib/pkgconfig:$DEVKITPRO/portlibs/wiiu/lib/pkgconfig"
 
 WORKDIR /project

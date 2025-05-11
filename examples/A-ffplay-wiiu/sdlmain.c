@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
             "-probesize",
             "1024",  // bytes to detect streams
             "-analyzeduration",
-            "1000000",  // microsec to detect streams
+            "0", //"1000000",  // microsec to detect streams
             buffer,     //(char *)filename,
             NULL        // argv must be NULL-terminated.
         };
@@ -69,11 +69,14 @@ int main(int argc, char **argv) {
         // Do something with the result (e.g., check for errors)
         if (result != 0) {
             fprintf(stderr, "ffplay_main failed with error code: %d\n", result);
+            sdltriangle_main();
             //  Consider returning a non-zero value from main to indicate
             //  failure
             return 1;
         }
     }
+
+    sdltriangle_main();
 
     printf("exiting main\n");
     return 0;
