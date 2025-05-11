@@ -47,7 +47,7 @@ int sdlanimate_main() {
     const int SCREEN_HEIGHT = 480;
 
     // Initialize SDL
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0) {
         printf("SDL Error: %s\n", SDL_GetError());
         return 1;
     }
@@ -66,7 +66,7 @@ int sdlanimate_main() {
         SDL_Quit();
         return 1;
     }
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);  // set background to black.
+    SDL_SetRenderDrawColor(renderer, 0, 0, 128, 255);
 
     // Load PNG images and create textures
     printf("loading images\n");
@@ -94,14 +94,30 @@ int sdlanimate_main() {
 
     // Main animation loop
     printf("Main animation loop\n");
-    int quit = 0;
-    SDL_Event event;
+    SDL_GameController* pad;
+    SDL_bool quit = SDL_FALSE;
     int frame = 0;
     while (!quit) {
-        // Handle events
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) {
-                quit = 1;
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
+                quit = SDL_TRUE;
+            } else if (e.type == SDL_KEYDOWN || e.type == SDL_MOUSEBUTTONDOWN) {
+                printf("SDL_KEYDOWN or SDL_MOUSEBUTTONDOWN\n");
+                quit = SDL_TRUE;
+                // WIIU code change 3c.
+                // Add controller events so we can exit on any button push
+            } else if (e.type == SDL_CONTROLLERBUTTONDOWN) {
+                quit = SDL_TRUE;
+                printf("SDL_PollEvent revd SDL_CONTROLLERBUTTONDOWN\n");
+            } else if (e.type == SDL_CONTROLLERDEVICEADDED) {
+                pad = SDL_GameControllerOpen(e.cdevice.which);
+                printf("Added controller %d: %s\n", e.cdevice.which,
+                       SDL_GameControllerName(pad));
+            } else if (e.type == SDL_CONTROLLERDEVICEREMOVED) {
+                pad = SDL_GameControllerFromInstanceID(e.cdevice.which);
+                printf("Removed controller: %s\n", SDL_GameControllerName(pad));
+                SDL_GameControllerClose(pad);
             }
         }
 

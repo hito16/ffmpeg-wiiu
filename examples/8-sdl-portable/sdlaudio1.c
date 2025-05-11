@@ -6,21 +6,21 @@
 //  WUT homebrew pkgconfig includes the SDL sub directories
 #ifdef __WIIU__
 #include <SDL.h>
+#include <SDL_mixer.h>
 #else
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
 #endif
 
 #include <stdio.h>
 
-#include "sdlportables.h"
+void event_loop();
 
-/* WIIU code change 2.
-   This was originally a stand alone SDL sample.  We will rename main()
-   to just a function so we can call it from our generic crossplatorm main()
-*/
-// int main(int argc, char* argv[]) {
-int sdltriangle_main() {
-    // SDL window and renderer
+//  WIIU code change 2.
+//  move main to sdlaudio1_main
+int sdlaudio1_main(int argc, char* argv[]) {
+    // int main(int argc, char *argv[]) {
+
     SDL_Window* window = NULL;
     SDL_Renderer* renderer = NULL;
 
@@ -28,15 +28,21 @@ int sdltriangle_main() {
     const int SCREEN_WIDTH = 640;
     const int SCREEN_HEIGHT = 480;
 
-    // Initialize SDL
-    // WIIU code change 3a.  Controller / gamepad support
-    // if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0) {
-        printf("SDL Error: %s\n", SDL_GetError());
+    // Check if the filename argument was provided
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <mp3_filename>\n", argv[0]);
         return 1;
     }
 
-    printf("SDL_Init()\n");
+    const char* mp3Filename = argv[1];
+
+    // Initialize SDL
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_EVENTS |
+                 SDL_INIT_GAMECONTROLLER) < 0) {
+        fprintf(stderr, "SDL could not initialize! SDL Error: %s\n",
+                SDL_GetError());
+        return 1;
+    }
 
     // Create window and renderer
     SDL_CreateWindowAndRenderer(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN,
@@ -46,32 +52,58 @@ int sdltriangle_main() {
         SDL_Quit();
         return 1;
     }
-    printf("SDL_CreateWindowAndRenderer()\n");
-
-    // Set the background color to black
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_SetRenderDrawColor(renderer, 0, 128, 128, 255);
     SDL_RenderClear(renderer);
-    printf("SDL_RenderClear()\n");
-
-    // Draw a red triangle
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);  // Red color
-    SDL_Point points[4] = {
-        {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 4},          // Top point
-        {SCREEN_WIDTH / 4, 3 * SCREEN_HEIGHT / 4},      // Bottom-left point
-        {3 * SCREEN_WIDTH / 4, 3 * SCREEN_HEIGHT / 4},  // Bottom-right point
-        {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 4}           // Return to Top point
-    };
-    SDL_RenderDrawLines(renderer, points, 4);
-
-    // Update the screen
     SDL_RenderPresent(renderer);
-    printf("SDL_RenderPresent()\n");
 
-    // WIIU code change 3b. Controller / gamepad support
+    // Initialize SDL_mixer
+
+    Mix_Init(MIX_INIT_FLAC | MIX_INIT_MOD | MIX_INIT_MP3 | MIX_INIT_OGG |
+             MIX_INIT_MID);
+    Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 4096);
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+        fprintf(stderr, "SDL_mixer could not initialize! SDL_mixer Error: %s\n",
+                Mix_GetError());
+        SDL_Quit();
+        return 1;
+    }
+
+    // Load the MP3 file from the command-line argument
+    Mix_Music* music = Mix_LoadMUS(mp3Filename);
+    if (music == NULL) {
+        fprintf(stderr, "Failed to load music '%s'! SDL_mixer Error: %s\n",
+                mp3Filename, Mix_GetError());
+        Mix_Quit();
+        SDL_Quit();
+        return 1;
+    }
+
+    // Play the music
+    if (Mix_PlayMusic(music, -1) == -1) {  // -1 means loop indefinitely
+        fprintf(stderr, "Failed to play music! SDL_mixer Error: %s\n",
+                Mix_GetError());
+        Mix_FreeMusic(music);
+        Mix_Quit();
+        SDL_Quit();
+        return 1;
+    }
+
+    printf("Playing music: %s. Press 'q' to quit.\n", mp3Filename);
+    event_loop();
+
+    // Free resources
+    Mix_FreeMusic(music);
+    Mix_Quit();
+    SDL_Quit();
+
+    return 0;
+}
+
+void event_loop() {
     SDL_GameController* pad;
+    SDL_Event e;
     SDL_bool quit = SDL_FALSE;
     while (!quit) {
-        SDL_Event e;
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
                 quit = SDL_TRUE;
@@ -94,14 +126,4 @@ int sdltriangle_main() {
             }
         }
     }
-    // While this works on the WiiU, the Mac did not render anything
-    // SDL_Delay(5000);  // Display for 5 seconds
-
-    // Clean up: Destroy renderer and window, and quit SDL
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-    printf("SDL_Quit()\n");
-
-    return 0;
 }

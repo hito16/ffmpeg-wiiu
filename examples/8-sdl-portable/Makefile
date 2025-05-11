@@ -39,7 +39,7 @@ INCLUDES	:=	. \
 CFLAGS	:=	-O3 -ffunction-sections -fdata-sections \
 			$(MACHDEP)
 
-CFLAGS	+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -DBIGENDIAN -DUSE_MBEDTLS
+CFLAGS	+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -DBIGENDIAN -DUSE_MBEDTLS -DDEBUG
 
 CXXFLAGS	:= $(CFLAGS)
 
@@ -60,9 +60,9 @@ LIBDIRS	:= $(PORTLIBS) $(WUT_ROOT)
 # Minimal libraries to check if your environement is configured
 PKGCONF			:=	$(DEVKITPRO)/portlibs/ppc/bin/powerpc-eabi-pkg-config
 PKGCONF_WIIU	:=	$(DEVKITPRO)/portlibs/wiiu/bin/powerpc-eabi-pkg-config
-CFLAGS		+=	$(shell $(PKGCONF_WIIU) --cflags SDL2_image SDL2_ttf sdl2)
-CXXFLAGS	+=	$(shell $(PKGCONF_WIIU) --cflags SDL2_image SDL2_ttf sdl2)
-LIBS		+=	$(shell $(PKGCONF_WIIU) --libs SDL2_image SDL2_ttf sdl2) \
+CFLAGS		+=	$(shell $(PKGCONF_WIIU) --cflags SDL2_mixer SDL2_image SDL2_ttf sdl2)
+CXXFLAGS	+=	$(shell $(PKGCONF_WIIU) --cflags SDL2_mixer SDL2_image SDL2_ttf sdl2)
+LIBS		+=	$(shell $(PKGCONF_WIIU) --libs SDL2_mixer SDL2_image SDL2_ttf sdl2) \
 				$(shell $(PKGCONF) --libs harfbuzz freetype2)
 
 #---------------------------------------------------------------------------------
