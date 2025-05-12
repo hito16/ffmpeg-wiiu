@@ -49,9 +49,13 @@ int main(int argc, char** argv) {
             NULL  // argv must be NULL-terminated.
         };
         int my_argc = 2;  // Number of arguments in my_argv
+
+	// play 15 sec of audio
+        ffmpeg_playaud_main(my_argc, my_argv);
+
+	// play video until it crashes
         ffmpeg_playvid_main(my_argc, my_argv);
     }
-
 
     WHBProcShutdown();
     printf("exiting main\n");
