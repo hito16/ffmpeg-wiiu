@@ -8,13 +8,14 @@
 #  brew install ffmpeg
 #  brew install pkgconf
 
-TARGET = sdl-ffmpeg-videoonly-macos
+TARGET = sdl-ffmpeg-macos
 
 # Source file
 #SRC	=  sdl-display4.c
 #SRC	=  ffmpeg-decode5.c
 #SRC	=  ffmpeg-sync2.c
-SRC	=  sdlfilepicker4.c
+#SRC	=  sdlfilepicker4.c
+SRC	=  ffmpeg-playvid.c
 
 # Compiler
 CC = gcc

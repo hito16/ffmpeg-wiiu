@@ -16,8 +16,7 @@
 
 #endif
 #include <stdio.h>
-#include <whb/log.h>
-#include <whb/log_console.h>
+
 #include <whb/proc.h>
 
 #include "exutil.h"
@@ -34,22 +33,26 @@ int main(int argc, char** argv) {
 #endif  // __WIIU__
 
     WHBProcInit();
-    WHBLogConsoleInit();
-    WHBLogPrintf("== Starting main");
-    WHBLogConsoleDraw();
+
 
     printf("starting main\n");
     // Call your SDL routine here.
     char buffer[1024];
     if (util_get_first_media_file(buffer, 1024) == 0) {
         printf("found media file %s\n", buffer);
-        WHBLogPrintf("== loading %s", buffer);
-        WHBLogConsoleDraw();
-        ffmpeg_sync2_main(buffer);
-        // ffmpeg_decode4_main(buffer);
+        // ffmpeg_sync2_main(buffer);
+        //  ffmpeg_decode4_main(buffer);
+
+        char* my_argv[] = {
+            "ffmpeg_playvid",  // argv[0] is the program name.
+            buffer,
+            NULL  // argv must be NULL-terminated.
+        };
+        int my_argc = 2;  // Number of arguments in my_argv
+        ffmpeg_playvid_main(my_argc, my_argv);
     }
 
-    WHBLogConsoleFree();
+
     WHBProcShutdown();
     printf("exiting main\n");
     return 0;
