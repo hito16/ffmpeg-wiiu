@@ -1,7 +1,10 @@
 /* ffmpeg-playaud.c
  * Plays audio from a video file using FFmpeg 6.x+ and SDL2.
  * Only audio is played; video frames are decoded but not rendered.
- * WORKS - basic SDL_OpenAudio device without callback
+ * WORKS - Better audio speed.  wanted_spec.freq was hardcoded to 44100, but the
+ * FFmpeg stream could be in a different sample rate.  If the input stream is,
+ * for example, 22050, and the output is forced to 44100, the audio will play
+ * twice as fast.
  */
 
 #include <SDL2/SDL.h>
@@ -12,10 +15,41 @@
 #include <libavutil/samplefmt.h>
 #include <libswresample/swresample.h>
 #include <stdio.h>
+#include <string.h>
 
 #ifndef AUDIO_PLAYER_ONLY
 #define AUDIO_PLAYER_ONLY
 #endif
+
+#define AUDIO_BUFFER_SIZE 192000
+
+typedef struct AudioData {
+    uint8_t buffer[AUDIO_BUFFER_SIZE];
+    int buffer_size;
+    int buffer_index;
+    SDL_mutex *mutex;
+    int target_sample_rate;  // Add this
+} AudioData;
+
+void audio_callback(void *userdata, Uint8 *stream, int len) {
+    AudioData *audio = (AudioData *)userdata;
+    SDL_LockMutex(audio->mutex);
+    int remaining = audio->buffer_size - audio->buffer_index;
+    int to_copy = (len > remaining) ? remaining : len;
+
+    if (to_copy > 0) {
+        memcpy(stream, audio->buffer + audio->buffer_index, to_copy);
+        audio->buffer_index += to_copy;
+    }
+    if (to_copy < len) {
+        memset(stream + to_copy, 0, len - to_copy);  // silence
+    }
+    if (audio->buffer_index >= audio->buffer_size) {
+        audio->buffer_size = 0;
+        audio->buffer_index = 0;
+    }
+    SDL_UnlockMutex(audio->mutex);
+}
 
 void play_audio_only(const char *filename) {
     AVFormatContext *fmt_ctx = NULL;
@@ -26,6 +60,10 @@ void play_audio_only(const char *filename) {
     AVFrame *frame = NULL;
     SwrContext *swr_ctx = NULL;
     int audio_stream_index = -1;
+
+    AudioData audio = {.buffer_size = 0, .buffer_index = 0};
+    audio.mutex = SDL_CreateMutex();
+    audio.target_sample_rate = 44100;  // Initialize here
 
     if (avformat_open_input(&fmt_ctx, filename, NULL, NULL) < 0) {
         fprintf(stderr, "Could not open source file %s\n", filename);
@@ -51,39 +89,22 @@ void play_audio_only(const char *filename) {
     }
 
     codec = avcodec_find_decoder(codecpar->codec_id);
-    if (!codec) {
-        fprintf(stderr, "Failed to find codec\n");
-        return;
-    }
-
     codec_ctx = avcodec_alloc_context3(codec);
-    if (!codec_ctx) {
-        fprintf(stderr, "Could not allocate codec context\n");
-        return;
-    }
+    avcodec_parameters_to_context(codec_ctx, codecpar);
+    avcodec_open2(codec_ctx, codec, NULL);
 
-    if (avcodec_parameters_to_context(codec_ctx, codecpar) < 0) {
-        fprintf(stderr, "Failed to copy codec parameters to context\n");
-        return;
-    }
-
-    if (avcodec_open2(codec_ctx, codec, NULL) < 0) {
-        fprintf(stderr, "Failed to open codec\n");
-        return;
-    }
-
-    // SDL init
     if (SDL_Init(SDL_INIT_AUDIO) < 0) {
         fprintf(stderr, "SDL_Init error: %s\n", SDL_GetError());
         return;
     }
 
     SDL_AudioSpec wanted_spec = {
-        .freq = 44100,
+        .freq = audio.target_sample_rate,  // Use the struct member
         .format = AUDIO_S16SYS,
         .channels = 2,
         .samples = 1024,
-        .callback = NULL,
+        .callback = audio_callback,
+        .userdata = &audio,
     };
 
     SDL_AudioDeviceID dev = SDL_OpenAudioDevice(NULL, 0, &wanted_spec, NULL, 0);
@@ -99,7 +120,7 @@ void play_audio_only(const char *filename) {
     av_channel_layout_default(&out_ch_layout, 2);
 
     if (!av_channel_layout_check(&out_ch_layout)) {
-        fprintf(stderr, "Invalid default channel layout\\n");
+        fprintf(stderr, "Invalid default channel layout\n");
         return;
     }
 
@@ -107,7 +128,8 @@ void play_audio_only(const char *filename) {
     av_opt_set_chlayout(swr_ctx, "in_chlayout", &in_ch_layout, 0);
     av_opt_set_chlayout(swr_ctx, "out_chlayout", &out_ch_layout, 0);
     av_opt_set_int(swr_ctx, "in_sample_rate", codecpar->sample_rate, 0);
-    av_opt_set_int(swr_ctx, "out_sample_rate", wanted_spec.freq, 0);
+    av_opt_set_int(swr_ctx, "out_sample_rate", audio.target_sample_rate,
+                   0);  // Use the struct member
     av_opt_set_sample_fmt(swr_ctx, "in_sample_fmt", codecpar->format, 0);
     av_opt_set_sample_fmt(swr_ctx, "out_sample_fmt", AV_SAMPLE_FMT_S16, 0);
 
@@ -129,29 +151,39 @@ void play_audio_only(const char *filename) {
                     int out_samples = av_rescale_rnd(
                         swr_get_delay(swr_ctx, codecpar->sample_rate) +
                             frame->nb_samples,
-                        wanted_spec.freq, codecpar->sample_rate, AV_ROUND_UP);
+                        audio.target_sample_rate, codecpar->sample_rate,
+                        AV_ROUND_UP);  // Use the struct member
 
                     av_samples_alloc(&out_buf, &out_linesize, 2, out_samples,
                                      AV_SAMPLE_FMT_S16, 0);
-
                     int converted =
                         swr_convert(swr_ctx, &out_buf, out_samples,
                                     (const uint8_t **)frame->extended_data,
                                     frame->nb_samples);
                     int size = av_samples_get_buffer_size(NULL, 2, converted,
                                                           AV_SAMPLE_FMT_S16, 1);
-                    SDL_QueueAudio(dev, out_buf, size);
+
+                    SDL_LockMutex(audio.mutex);
+                    if (size <= AUDIO_BUFFER_SIZE) {
+                        memcpy(audio.buffer, out_buf, size);
+                        audio.buffer_size = size;
+                        audio.buffer_index = 0;
+                    }
+                    SDL_UnlockMutex(audio.mutex);
 
                     av_freep(&out_buf);
                 }
             }
         }
         av_packet_unref(pkt);
+        SDL_Delay(10);
     }
 
     SDL_Delay(15000);  // Let the last bit play
     SDL_CloseAudioDevice(dev);
+    SDL_DestroyMutex(audio.mutex);
     SDL_Quit();
+
     av_frame_free(&frame);
     av_packet_free(&pkt);
     swr_free(&swr_ctx);
@@ -168,7 +200,6 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Usage: %s <video_file>\n", argv[0]);
         return 1;
     }
-
     play_audio_only(argv[1]);
     return 0;
 }
