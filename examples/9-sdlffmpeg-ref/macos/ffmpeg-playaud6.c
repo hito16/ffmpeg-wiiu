@@ -112,7 +112,7 @@ void play_audio_only(const char *filename) {
     av_channel_layout_copy(&in_ch_layout, &codecpar->ch_layout);
 
     AVChannelLayout out_ch_layout;
-    av_channel_layout_default(&out_ch_layout, 2);
+    av_channel_layout_default(&out_ch_layout, 2);  // default stereo
 
     if (!av_channel_layout_check(&out_ch_layout)) {
         fprintf(stderr, "Invalid default channel layout\n");

@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
         };
         int my_argc = 2;  // Number of arguments in my_argv
 
-        ffmpeg_playaud_main(my_argc, my_argv);
+        ffmpeg_play_media(my_argc, my_argv);
 
 	// play video until it crashes
         //ffmpeg_playvid_main(my_argc, my_argv);

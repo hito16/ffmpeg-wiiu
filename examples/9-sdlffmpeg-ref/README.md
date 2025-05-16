@@ -28,7 +28,8 @@ A real testiment to all those who worked on devkitpro, WUT, SDL ports, Aroma, an
 
 ### replicate ffplay video out
 
-1. ffplay builds fine on wiiu and mac.  On mac it runs without issue, but on wiiu it hangs.  The two big implementation differences are WiiU SDL_Thread and WiiU SDL_Texture. I tried to replicate the ffplay logic on my own in ffmpeg-playvid.c, and I do see a similar hang.
+1. ffplay builds fine on wiiu and mac.  On mac it runs without issue, but on wiiu it hangs.  
+The two big implementation differences are WiiU SDL_Thread and WiiU SDL_Texture. I tried to replicate the ffplay logic on my own in ffmpeg-playvid.c, and I do see a similar hang.
 2. need gdb
 
 ### replicate ffplay audio out
