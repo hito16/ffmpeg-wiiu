@@ -16,7 +16,8 @@ TARGET = sdl-ffmpeg-macos
 #SRC	=  ffmpeg-sync2.c
 #SRC	=  sdlfilepicker4.c
 #SRC	=  ffmpeg-playvid.c
-SRC	=  ffmpeg-playaud6.c
+#SRC	=  ffmpeg-playaud6.c
+SRC	=  ffmpeg-playboth2.c
 
 # Compiler
 CC = gcc
