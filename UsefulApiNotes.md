@@ -6,18 +6,14 @@
 Threading on the WiiU is cooperative, unlike pthreads which are scheduled by the os (preemptive).
 
 It really depends on what the threads are doing.   
-feel like it's preemetive.  However, one thing to play with is adding a max
-run time to each thread.
+However, one thing to play with is adding a max run time to each thread.
 
 ```
     SDL_Thread* my_thread = SDL_CreateThread(...);
+// cpp
     auto native_handle = reinterpret_cast<OSThread*>(SDL_GetThreadID(my_thread));
     OSSetThreadRunQuantum(native_handle, 1000);
-```
-
-or
-
-```
+// C
     OSThread* native_handle = (OSThread*) SDL_GetThreadID(my_sdl_thread);
     OSSetThreadRunQuantum(native_handle, 1000);
 ```
