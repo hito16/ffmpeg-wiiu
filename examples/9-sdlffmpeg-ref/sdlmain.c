@@ -40,8 +40,6 @@ int main(int argc, char** argv) {
     char buffer[1024];
     if (util_get_first_media_file(buffer, 1024) == 0) {
         printf("found media file %s\n", buffer);
-        // ffmpeg_sync2_main(buffer);
-        //  ffmpeg_decode4_main(buffer);
 
         char* my_argv[] = {
             "ffmpeg_playvid",  // argv[0] is the program name.
@@ -52,11 +50,15 @@ int main(int argc, char** argv) {
 
         ffmpeg_play_media(my_argc, my_argv);
 
-	// play video until it crashes
-        //ffmpeg_playvid_main(my_argc, my_argv);
     }
 
-    WHBProcShutdown();
+    int gracefully_exit = 0;
+    while (WHBProcIsRunning()){
+        if (gracefully_exit == 0) {
+          SYSLaunchMenu(); 
+          gracefully_exit = 1;
+        }
+    }
     printf("exiting main\n");
     return 0;
 }

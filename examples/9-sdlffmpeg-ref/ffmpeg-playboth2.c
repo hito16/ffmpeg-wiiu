@@ -362,6 +362,7 @@ AVFrame *frame_queue_peek(FrameQueue *q, double *pts, int *serial) {
 void audio_callback(void *userdata, Uint8 *stream, int len) {
     MediaContext *ctx = (MediaContext *)userdata;
     int audio_size;
+    static int callback_count = 0; // Static counter for this function
 
     SDL_memset(stream, 0, len);  // Fill the stream with silence initially
 
@@ -369,16 +370,33 @@ void audio_callback(void *userdata, Uint8 *stream, int len) {
     double current_audio_time = ctx->audio_clock;
     SDL_UnlockMutex(ctx->audio_clock_mutex);
 
+    callback_count++; // Increment counter
+
+    // Print log message every 200 calls
+    if (callback_count % 200 == 0) {
+         fprintf(stderr, "Audio callback called, requested len: %d\n", len);
+    }
+
+
     // While there's space in the SDL buffer and we have audio data
     while (len > 0) {
         if (ctx->audio_buffer_index >= ctx->audio_buffer_size) {
             // Need to decode and resample more audio
+             if (callback_count % 200 == 0) {
+                 fprintf(stderr, "Audio callback: Audio buffer empty, popping frame from queue. Queue size: %d\n", ctx->audio_queue.nb_frames);
+             }
             AVFrame *audio_frame =
                 frame_queue_pop(&ctx->audio_queue, &current_audio_time, NULL);
             if (!audio_frame) {
                 // No audio frames in the queue, output silence
+                 if (callback_count % 200 == 0) {
+                     fprintf(stderr, "Audio callback: Audio frame queue empty, outputting silence.\n");
+                 }
                 break;
             }
+             if (callback_count % 200 == 0) {
+                 fprintf(stderr, "Audio callback: Popped audio frame. PTS: %.3f\n", current_audio_time);
+             }
 
             // Resample the audio frame
             int out_samples = av_rescale_rnd(
@@ -396,18 +414,33 @@ void audio_callback(void *userdata, Uint8 *stream, int len) {
                 break;
             }
 
+            // Add extra check: Ensure out_size is positive before allocation
+            if (out_size <= 0) {
+                 fprintf(stderr, "audio_callback: Invalid calculated buffer size: %d\n", out_size);
+                 av_frame_free(&audio_frame);
+                 break;
+            }
+
             // Allocate buffer for resampled data (reallocate if needed)
             if (!ctx->audio_buffer || ctx->audio_buffer_size < out_size) {
                 av_free(ctx->audio_buffer);
                 ctx->audio_buffer_size =
                     out_size;  // Use out_size for buffer size
+
+                // Add logging for the requested allocation size before av_malloc
+                 fprintf(stderr, "Audio callback: Attempting to allocate audio buffer of size: %u\n", ctx->audio_buffer_size);
+
                 ctx->audio_buffer = av_malloc(ctx->audio_buffer_size);
                 if (!ctx->audio_buffer) {
                     fprintf(stderr,
-                            "audio_callback: Error allocating audio buffer\n");
+                            "audio_callback: Error allocating audio buffer. Requested size: %u, Current buffer size: %u\n",
+                            out_size, ctx->audio_buffer_size); // Added logging for sizes
                     av_frame_free(&audio_frame);
                     break;
                 }
+                 if (callback_count % 200 == 0) {
+                     fprintf(stderr, "Audio callback: Audio buffer reallocated, new size: %u\n", ctx->audio_buffer_size);
+                 }
             }
             // Reset index as buffer is new or reallocated
             ctx->audio_buffer_index = 0;
@@ -919,7 +952,7 @@ int init_media_player(MediaContext *ctx, const char *filepath) {
 
         SDL_PauseAudioDevice(ctx->audio_device_id, 0);  // Start audio playback
 
-        printf("initialized audio device\n");
+        fprintf(stderr, "initialized audio device\n");
     }
 
     // If both video and audio streams are present, initialize SDL with both
