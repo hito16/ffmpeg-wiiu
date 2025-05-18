@@ -14,10 +14,10 @@ TARGET = sdl-ffmpeg-macos
 #SRC	=  sdl-display4.c
 #SRC	=  ffmpeg-decode5.c
 #SRC	=  ffmpeg-sync2.c
-#SRC	=  sdlfilepicker4.c
+SRC	=  sdlfilepicker5.c
 #SRC	=  ffmpeg-playvid.c
 #SRC	=  ffmpeg-playaud6.c
-SRC	=  ffmpeg-playboth2.c
+#SRC	=  ffmpeg-playboth2.c
 
 # Compiler
 CC = gcc
@@ -28,7 +28,7 @@ CFLAGS = -Wall -Werror -g
 # Linker flags
 
 #PKGCONF_MAC	:= /opt/homebrew/bin/pkgconf
-PKGCONF_MAC	:= /usr/local/bin/pkgconf
+PKGCONF_MAC	:= /usr/local/bin/pkg-config
 # general order -lavformat -lavcodec -lavutil -lswresample -lswscale -lm -lz
 FFMPEG_CFLAGS = $(shell $(PKGCONF_MAC) --cflags libavformat libavcodec libavutil libswresample libswscale)
 FFMPEG_LDFLAGS = $(shell $(PKGCONF_MAC) --libs libavformat libavcodec libavutil libswresample libswscale)

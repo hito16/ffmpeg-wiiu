@@ -48,8 +48,14 @@ int main(int argc, char** argv) {
         };
         int my_argc = 2;  // Number of arguments in my_argv
 
-        ffmpeg_play_media(my_argc, my_argv);
+	// Play audio only
+	//ffmpeg_playaud_main(my_argc, my_argv);
 
+	// Play video only
+	//ffmpeg_playaud_main(my_argc, my_argv);
+
+	// Play both
+        ffmpeg_play_media(my_argc, my_argv);
     }
 
     int gracefully_exit = 0;

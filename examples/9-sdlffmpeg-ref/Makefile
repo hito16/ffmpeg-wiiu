@@ -38,7 +38,7 @@ CFLAGS	:=	-O3 -ffunction-sections -fdata-sections \
 			$(MACHDEP)
 
 CFLAGS	+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -DBIGENDIAN -DUSE_MBEDTLS \
-			-DBUILD_AS_FUNCTION # -DDEBUG
+			-DBUILD_AS_FUNCTION  -DDEBUG
 
 
 CXXFLAGS	:= $(CFLAGS)
