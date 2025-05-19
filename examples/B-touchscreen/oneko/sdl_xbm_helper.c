@@ -69,7 +69,7 @@ SDL_Surface* create_surface_from_xbm(const unsigned char* xbm_data, int width,
     return surface;
 }
 
-#ifdef BUILD_AS_MAIN
+/*
 int main(int argc, char* argv[]) {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
@@ -176,4 +176,4 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
-#endif
+*/

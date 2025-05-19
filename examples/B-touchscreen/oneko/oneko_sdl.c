@@ -2,24 +2,29 @@
 #include <math.h>  // For sqrt()
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>  // For memset
+#include <string.h> // For memset
 #include "neko_image_states.h"
-#include "neko_xbm.h"           // Your XBM data
+#include "neko_xbm.h" // Your XBM data
 #include "sdl_xbm_helper.h"
 
 // Neko structure to hold neko's state
 typedef struct {
     int x, y;              // Current position
     int dx, dy;            // Direction of movement
-    NekoRealStates state;  // Current direction, now from xbm_images.h
+    NekoRealStates state;  // Current direction, now from neko_image_states.h
     int frame;             // Current animation frame
     int sleeping;          // Is neko sleeping?
     int dont_move;
     int move_start;
     int frame_delay;
-    int edge_timer;  // Timer for edge animation
+    int edge_timer; // Timer for edge animation.  It is used for wall collision.
     int last_x, last_y;
+    int animation_delay_counter;
+    int direction_change_counter;
 } Neko;
+
+// Global variables for animation timing
+static Uint32 global_animation_timer = 0;
 
 // Function declarations
 NekoRealStates NekoDirectionCalc(int dx, int dy, int is_dont_move,
@@ -32,19 +37,32 @@ void NekoThinkDraw(Neko *neko, int mouse_x, int mouse_y, SDL_Renderer *renderer,
 void ProcessNeko(Neko *neko, int mouse_x, int mouse_y, SDL_Renderer *renderer,
                    XbmImageData *images);
 
-int main(int argc, char *argv[]) {
-    SDL_Init(SDL_INIT_VIDEO);
+// Rules
+// Never redefine neko_animations, import from neko_image_states.h
+// Never access images using index number or ENUM.  Access using
+//.   neko_animations.image_one and .image_two
 
-    SDL_Window *window =
-        SDL_CreateWindow("Neko", SDL_WINDOWPOS_UNDEFINED,
-                         SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_SHOWN);
-    if (!window) {
-        fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
+int main(int argc, char *argv[]) {
+    (void)argc; // Suppress unused parameter warning
+    (void)argv; // Suppress unused parameter warning
+    SDL_Window *window = NULL;
+    SDL_Renderer *renderer = NULL;
+
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
         return 1;
     }
 
-    SDL_Renderer *renderer =
-        SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    window = SDL_CreateWindow("Neko", SDL_WINDOWPOS_UNDEFINED,
+                              SDL_WINDOWPOS_UNDEFINED, 640, 480,
+                              SDL_WINDOW_SHOWN);
+    if (!window) {
+        fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
+        SDL_Quit();
+        return 1;
+    }
+
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (!renderer) {
         fprintf(stderr, "SDL_CreateRenderer failed: %s\n", SDL_GetError());
         SDL_DestroyWindow(window);
@@ -52,10 +70,10 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Initialize Neko's state
+    // Initialize Neko structure
     Neko neko;
-    neko.x = 320; //initial x
-    neko.y = 240; //initial y
+    neko.x = 320; // Initial position
+    neko.y = 240;
     neko.dx = 0;
     neko.dy = 0;
     neko.state = NEKO_STATE_AWAKE;
@@ -65,195 +83,163 @@ int main(int argc, char *argv[]) {
     neko.move_start = 0;
     neko.frame_delay = 0;
     neko.edge_timer = 0;
-    neko.last_x = 0;
-    neko.last_y = 0;
+    neko.last_x = 320;
+    neko.last_y = 240;
+    neko.animation_delay_counter = 0;
+    neko.direction_change_counter = 0;
+
+    SDL_Point mouse_pos;
+    XbmImageData *images = xbm_images;
 
     SDL_Event event;
     int quit = 0;
-    int sleeping_frame_count = 0;
 
-    // Main loop
+    // Initialize global timer
+    global_animation_timer = SDL_GetTicks();
+
     while (!quit) {
-        while (SDL_PollEvent(&event)) {
+        while (SDL_PollEvent(&event) != 0) {
             if (event.type == SDL_QUIT) {
                 quit = 1;
-            } else if (event.type == SDL_MOUSEBUTTONDOWN) {
-                if (event.button.button == SDL_BUTTON_LEFT) {
-                    neko.sleeping = !neko.sleeping;
-                    neko.dont_move = 0;
-                    sleeping_frame_count = 0;
-                }
+            } else if (event.type == SDL_MOUSEMOTION) {
+                mouse_pos.x = event.motion.x;
+                mouse_pos.y = event.motion.y;
             }
         }
 
-        int mouse_x, mouse_y;
-        SDL_GetMouseState(&mouse_x, &mouse_y);
-
-        // If Neko is sleeping, increment the timer.
-        if (neko.sleeping) {
-            sleeping_frame_count++;
-        }
-        // After 5 seconds of sleeping, play the snoring animation
-        if (sleeping_frame_count > 5 * 60) {
-            neko.state = NEKO_STATE_SLEEP;
-        }
-
-        ProcessNeko(&neko, mouse_x, mouse_y, renderer, xbm_images);
-
-        // Clear the renderer...
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
-        // Draw Neko
-        NekoThinkDraw(&neko, mouse_x, mouse_y, renderer, xbm_images);
+        // printf("Mouse position: %d, %d\n", mouse_pos.x, mouse_pos.y);
+        ProcessNeko(&neko, mouse_pos.x, mouse_pos.y, renderer, images);
+        NekoThinkDraw(&neko, mouse_pos.x, mouse_pos.y, renderer, images);
 
-        // Update the screen
         SDL_RenderPresent(renderer);
-
-        // Cap frame rate to 60 FPS, adjusted for 3x slower rendering
-        SDL_Delay(1000 / 20); // Change 60 to 20 (60 / 3 = 20)
+        SDL_Delay(32); // Increased delay to ~30 FPS (from 16 to 32)
     }
 
-    // Clean up
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
-
     return 0;
 }
 
-// Function to calculate Neko's direction, same as the original oneko.c
 NekoRealStates NekoDirectionCalc(int dx, int dy, int is_dont_move,
                                  NekoRealStates prev_state) {
     if (is_dont_move) {
+        return NEKO_STATE_AWAKE;
+    }
+
+    if (dx == 0 && dy == 0) {
         return prev_state;
     }
-    if (dx == 0 && dy == 0) {
-        return NEKO_STATE_AWAKE;
-    } else if (dx == 0 && dy > 0) {
-        return NEKO_STATE_MOVE_DOWN;
-    } else if (dx > 0 && dy > 0) {
-        return NEKO_STATE_MOVE_DWRIGHT;
-    } else if (dx < 0 && dy > 0) {
-        return NEKO_STATE_MOVE_DWLEFT;
-    } else if (dx < 0 && dy == 0) {
-        return NEKO_STATE_MOVE_LEFT;
-    } else if (dx > 0 && dy == 0) {
-        return NEKO_STATE_MOVE_RIGHT;
-    } else if (dx == 0 && dy < 0) {
-        return NEKO_STATE_MOVE_UP;
-    } else if (dx < 0 && dy < 0) {
-        return NEKO_STATE_MOVE_UPLEFT;
-    } else if (dx > 0 && dy < 0) {
-        return NEKO_STATE_MOVE_UPRIGHT;
+
+    if (abs(dx) > abs(dy)) {
+        if (dx > 0) {
+            return NEKO_STATE_R_MOVE;
+        } else {
+            return NEKO_STATE_L_MOVE;
+        }
+    } else if (abs(dy) > abs(dx)) {
+        if (dy > 0) {
+            return NEKO_STATE_D_MOVE;
+        } else {
+            return NEKO_STATE_U_MOVE;
+        }
+    } else {
+        if (dx > 0 && dy > 0) {
+            return NEKO_STATE_DR_MOVE;
+        } else if (dx > 0 && dy < 0) {
+            return NEKO_STATE_UR_MOVE;
+        } else if (dx < 0 && dy > 0) {
+            return NEKO_STATE_DL_MOVE;
+        } else {
+            return NEKO_STATE_UL_MOVE;
+        }
     }
-    return NEKO_STATE_AWAKE;
 }
 
-// Function to check if Neko should stop moving
 int IsNekoDontMove(Neko *neko, int mouse_x, int mouse_y) {
-    int distance = sqrt(pow(neko->x - mouse_x, 2) + pow(neko->y - mouse_y, 2));
-    if (distance < 5) {
+    double dist = sqrt(pow(neko->x - mouse_x, 2) + pow(neko->y - mouse_y, 2));
+    if (dist < 16) {
         return 1;
-    } else {
-        return 0;
     }
+    return 0;
 }
 
-// Function to check if Neko should start moving
 int IsNekoMoveStart(Neko *neko, int mouse_x, int mouse_y) {
-    int distance = sqrt(pow(neko->x - mouse_x, 2) + pow(neko->y - mouse_y, 2));
-    if (distance > 10) {
+    double dist = sqrt(pow(neko->x - mouse_x, 2) + pow(neko->y - mouse_y, 2));
+    if (dist > 16 && dist < 200) {
         return 1;
-    } else {
-        return 0;
     }
+    return 0;
 }
 
-// Function to calculate Neko's movement direction
 void CalcDxDy(Neko *neko, int mouse_x, int mouse_y) {
-    if (neko->dont_move) {
-        neko->dx = 0;
-        neko->dy = 0;
-    } else {
-        neko->dx = mouse_x - neko->x;
-        neko->dy = mouse_y - neko->y;
-    }
+    neko->dx = mouse_x - neko->x;
+    neko->dy = mouse_y - neko->y;
 }
 
-// Function to draw Neko based on its state
 void NekoThinkDraw(Neko *neko, int mouse_x, int mouse_y, SDL_Renderer *renderer,
                    XbmImageData *images) {
     int image_index = 0;
-    int frame_count = 2; // Default to 2 frames for most animations
+    int frame_count = 2;
+    (void)mouse_x;
+    (void)mouse_y;
+    static int animation_frame = 0; // Static to keep track between calls
 
-    // Determine Neko's state and animation frame
-     if (neko->sleeping)
-    {
-        if (neko->frame < 30)
-        {
-             image_index = 0;
-        }
-        else if (neko->frame < 60)
-        {
-            image_index = 17;
-        }
-        else
-        {
-            image_index = 18;
-        }
+    // Use the global timer to switch between images
+    Uint32 current_time = SDL_GetTicks();
+    if (current_time - global_animation_timer >= 2000) { // 2000 milliseconds = 2 seconds
+        global_animation_timer = current_time;
+        animation_frame = 1 - animation_frame; // Toggle between 0 and 1
     }
-    else
-    {
-        switch (neko->state) {
-        case NEKO_STATE_AWAKE:
-            image_index = 0;
-            frame_count = 1;
-            break;
-        case NEKO_STATE_MOVE_DOWN:
-            image_index = (neko->frame < 15) ? 1 : 2;
-            break;
-        case NEKO_STATE_MOVE_DWLEFT:
-            image_index = (neko->frame < 15) ? 5 : 6;
-            break;
-        case NEKO_STATE_MOVE_DWRIGHT:
-            image_index = (neko->frame < 15) ? 7 : 8;
-            break;
-        case NEKO_STATE_MOVE_LEFT:
-            image_index = (neko->frame < 15) ? 9 : 10;
-            break;
-         case NEKO_STATE_MOVE_RIGHT:
-            image_index = (neko->frame < 15) ? 13 : 14;
-            break;
-        case NEKO_STATE_MOVE_UP:
-            image_index = (neko->frame < 15) ? 19 : 20;
-            break;
-        case NEKO_STATE_MOVE_UPLEFT:
-             image_index = (neko->frame < 15) ? 21 : 22;
-            break;
-        case NEKO_STATE_MOVE_UPRIGHT:
-            image_index = (neko->frame < 15) ? 23 : 24;
-            break;
-        case NEKO_STATE_SLEEP:
-            image_index = 17;
-            frame_count = 3;
-            break;
-        case NEKO_STATE_FROLIC:
-             image_index = 30;
-             frame_count = 1;
-             break;
-        default:
-            image_index = 0;
-            frame_count = 1;
-            break;
+
+    // Find the correct animation entry and get the image indices.
+    for (int i = 0; i < sizeof(neko_animations) / sizeof(neko_animations[0]); i++) {
+        if (neko_animations[i].state == neko->state) {
+            if (neko_animations[i].image_two == -1) {
+                image_index = neko_animations[i].image_one;
+                frame_count = 1; // Only one frame
+            } else {
+                // Alternate between image_one and image_two based on animation_frame
+                image_index = (animation_frame == 0) ? neko_animations[i].image_one : neko_animations[i].image_two;
+                frame_count = 2;
+            }
+            break; // Found the entry, exit the loop
         }
     }
 
+    // Handle sleeping as a special case.
+    if (neko->sleeping) {
+        if (neko->frame < 30) {
+             for (int i = 0; i < sizeof(neko_animations) / sizeof(neko_animations[0]); i++) {
+                if (neko_animations[i].state == NEKO_STATE_AWAKE)
+                {
+                    image_index = neko_animations[i].image_one;
+                    frame_count = 1;
+                    break;
+                }
+             }
+        } else {
+            for (int i = 0; i < sizeof(neko_animations) / sizeof(neko_animations[0]); i++) {
+                if (neko_animations[i].state == NEKO_STATE_SLEEP)
+                {
+                     image_index = neko_animations[i].image_two;
+                      frame_count = 1;
+                      break;
+                }
+            }
+        }
+    }
 
     // Ensure image_index is within bounds
-    if (image_index < 0 || image_index >= sizeof(xbm_images) / sizeof(xbm_images[0])) {
+    if (image_index < 0 ||
+        image_index >= sizeof(xbm_images) / sizeof(xbm_images[0])) {
         fprintf(stderr, "Error: image_index out of bounds: %d\n", image_index);
-        return; // Or handle the error as appropriate for your application
+        return;
     }
+
     SDL_Surface *image_surface = create_surface_from_xbm(
         images[image_index].bits, images[image_index].width,
         images[image_index].height);
@@ -265,7 +251,7 @@ void NekoThinkDraw(Neko *neko, int mouse_x, int mouse_y, SDL_Renderer *renderer,
 
     SDL_Texture *texture =
         SDL_CreateTextureFromSurface(renderer, image_surface);
-    SDL_FreeSurface(image_surface); // Clean up the surface
+    SDL_FreeSurface(image_surface);
 
     if (!texture) {
         fprintf(stderr, "SDL_CreateTextureFromSurface failed: %s\n",
@@ -281,26 +267,14 @@ void NekoThinkDraw(Neko *neko, int mouse_x, int mouse_y, SDL_Renderer *renderer,
 
     SDL_RenderCopy(renderer, texture, NULL, &dest_rect);
     SDL_DestroyTexture(texture);
-
-    // Update frame counter, handle sleep frame animation,
-    neko->frame++;
-    if (neko->frame >= 60)
-    {
-        neko->frame = 0;
-    }
-    if (neko->sleeping)
-    {
-         if (neko->frame == 30 || neko->frame == 60)
-         {
-            neko->frame = 0;
-         }
-    }
-
 }
 
 // Function to update Neko's state and position
 void ProcessNeko(Neko *neko, int mouse_x, int mouse_y, SDL_Renderer *renderer,
                    XbmImageData *images) {
+    (void)renderer;
+    (void)images;
+
     if (neko->sleeping) {
         return;
     }
@@ -318,24 +292,50 @@ void ProcessNeko(Neko *neko, int mouse_x, int mouse_y, SDL_Renderer *renderer,
     }
 
     CalcDxDy(neko, mouse_x, mouse_y);
-    neko->state = NekoDirectionCalc(neko->dx, neko->dy, neko->dont_move,
-                                     neko->state);
+    // Increment direction change counter
+    neko->direction_change_counter++;
 
-    if (neko->dont_move) {
-        return;
+    // Change direction (and thus state) only every 15 frames (for 2 changes per second)
+    if (neko->direction_change_counter >= 15) {
+        neko->state = NekoDirectionCalc(neko->dx, neko->dy, neko->dont_move, neko->state);
+        neko->direction_change_counter = 0;
     }
 
-    neko->x += neko->dx * 0.1;
-    neko->y += neko->dy * 0.1;
+    // Limit Neko's movement speed
+    int max_speed = 2; // Adjust for desired max speed - reduced from 5 to 2
+    double distance = sqrt(pow(neko->dx, 2) + pow(neko->dy, 2));
+    if (distance > max_speed) {
+        neko->dx = (int)(neko->dx * max_speed / distance);
+        neko->dy = (int)(neko->dy * max_speed / distance);
+    }
 
-    // Keep Neko within bounds (assuming window size of 640x480)
-    if (neko->x < 0)
+    neko->x += neko->dx;
+    neko->y += neko->dy;
+
+    // Wall collision detection and handling
+    if (neko->x < 0) {
         neko->x = 0;
-    if (neko->x > 640)
+        neko->dx = -neko->dx;
+        neko->edge_timer = 1;
+    } else if (neko->x > 640) {
         neko->x = 640;
-    if (neko->y < 0)
+        neko->dx = -neko->dx;
+        neko->edge_timer = 1;
+    }
+    if (neko->y < 0) {
         neko->y = 0;
-    if (neko->y > 480)
+        neko->dy = -neko->dy;
+        neko->edge_timer = 1;
+    } else if (neko->y > 480) {
         neko->y = 480;
-}
+        neko->dy = -neko->dy;
+        neko->edge_timer = 1;
+    }
 
+    if (neko->edge_timer > 0) {
+        neko->edge_timer++;
+        if (neko->edge_timer > 30) {
+            neko->edge_timer = 0;
+        }
+    }
+}
