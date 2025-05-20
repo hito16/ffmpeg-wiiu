@@ -1,5 +1,4 @@
 // sdl_oneko_main.c
-// gcc sdl_oneko_main.c sdl_xbm_helper.c -o sdl_oneko `pkg-config --cflags --libs sdl2` -I.
 
 #include <SDL.h>
 #include <stdio.h>
@@ -84,9 +83,8 @@ typedef enum {
 // BitmapGCDataTable initialization. The 'texture' member is initialized to NULL.
 // The InitBitmapData function will later populate the 'texture' members.
 // Based on the provided BitmapGCDataTable initialization snippet.
-// We are extracting the first image_bits pointer and the first mask_bits pointer
-// from each entry, as these correspond to the default 'neko' character.
 // The compiler will automatically determine the size of the array based on the initializer list.
+// clang-format off
 BitmapTXData BitmapTXDataTable[] = { // Renamed array
     // { image_bits, mask_bits, width, height, texture (NULL) }
     // Added explicit casts to const unsigned char* to resolve pointer-sign warnings.
@@ -126,6 +124,7 @@ BitmapTXData BitmapTXDataTable[] = { // Renamed array
     // The final NULL entry as provided in the snippet
     { NULL, NULL, 0, 0, NULL } // 32: NULL Terminator
 };
+// clang-format on
 
 // The total number of animation frames (excluding the NULL terminator).
 // We can calculate this from the size of the BitmapTXDataTable.
@@ -146,7 +145,7 @@ typedef struct {
 // We use the #define values from oneko.h for the state indices.
 // !! VERIFY THESE INDICES AGAINST THE ORIGINAL ONEKO.C AnimationPattern INITIALIZATION !!
 // The order of these entries MUST match the integer values of the animation state #defines.
-
+// clang-format off
 AnimationState AnimationPattern[] = { // Renamed array
     // State 0: NEKO_STOP (Standing)
     { { TX_MATI2, TX_MATI2 } }, // Uses TX_MATI2 for both ticks
@@ -186,6 +185,7 @@ AnimationState AnimationPattern[] = { // Renamed array
     { { TX_RTOGI1, TX_RTOGI2 } } // Uses TX_RTOGI1 and TX_RTOGI2
     // Add other states if they exist in the original oneko.h/c and map them to frame indices
 };
+// clang-format on
 
 
 // The total number of animation states.
@@ -256,6 +256,7 @@ SDL_Surface* create_surface_from_xbm(const unsigned char* xbm_data, int width, i
 int InitScreen(char *DisplayName, SDL_Window** window, SDL_Renderer** renderer);
 void ProcessEvent(SDL_Event* e, int* quit);
 void ProcessNeko(SDL_Renderer* renderer);
+void DeInitAll(SDL_Window* window, SDL_Renderer* renderer); // Forward declaration for deinitialization function
 
 // Forward declarations for functions to be ported/reimplemented
 int Interval(void);
@@ -268,7 +269,7 @@ int IsNekoDontMove(void);
 int IsNekoMoveStart(void);
 void CalcDxDy(void);
 void NekoThinkDraw(SDL_Renderer* renderer);
-int InitBitmapAndTXs(SDL_Renderer* renderer); // Moved declaration
+int InitBitmapAndTXs(SDL_Renderer* renderer);
 
 
 // Placeholder for ported/reimplemented functions implementations
@@ -534,46 +535,9 @@ void ProcessNeko(SDL_Renderer* renderer) {
     printf("Exiting main game loop within ProcessNeko.\n");
 }
 
-
-int main(int argc, char* argv[]) {
-    SDL_Window* window = NULL;
-    SDL_Renderer* renderer = NULL;
-
-    // --- Phase 1: SDL Initialization and Window Creation ---
-    // Call the new InitScreen function
-    if (InitScreen("oneko (SDL)", &window, &renderer) != 0) {
-        fprintf(stderr, "Failed to initialize SDL and create window/renderer.\n");
-        return 1; // Indicate failure
-    }
-
-
-    // --- Phase 2: Initialize Bitmap Data and Load Textures ---
-    // Call the renamed initialization function
-    if (InitBitmapAndTXs(renderer) != 0) {
-        fprintf(stderr, "Failed to initialize bitmap data and textures.\n");
-        // Cleanup textures (already handled partially by InitBitmapAndTXs on failure,
-        // but the main cleanup loop below will handle any remaining or in success case)
-        // No need for extra cleanup here, the main cleanup section handles it.
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1; // Indicate failure
-    }
-    printf("Bitmap data and textures initialized.\n");
-
-    // --- End Initialize Bitmap Data and Load Textures ---
-
-    // --- Main Application Loop ---
-    // Call ProcessNeko to run the main game loop
-    printf("Entering main application loop (calling ProcessNeko).\n");
-    ProcessNeko(renderer);
-    printf("ProcessNeko returned. Application loop finished.\n");
-
-
-    // --- Phase 1 & 2: SDL Cleanup ---
-    // Destroy textures, renderer, and window, and shut down SDL
-
-    printf("Cleaning up SDL resources.\n");
+// Function to deinitialize SDL window, renderer, and quit SDL
+void DeInitAll(SDL_Window* window, SDL_Renderer* renderer) {
+    printf("Deinitializing SDL window, renderer, and quitting SDL.\n");
 
     // Cleanup Textures
     // Loop through the table until the NULL entry
@@ -597,6 +561,40 @@ int main(int argc, char* argv[]) {
 
     SDL_Quit(); // Shut down all SDL subsystems
     printf("SDL shut down successfully.\n");
+}
+
+
+int main(int argc, char* argv[]) {
+    SDL_Window* window = NULL;
+    SDL_Renderer* renderer = NULL;
+
+    // --- Phase 1: SDL Initialization and Window Creation ---
+    // Call the new InitScreen function
+    if (InitScreen("oneko (SDL)", &window, &renderer) != 0) {
+        fprintf(stderr, "Failed to initialize SDL and create window/renderer.\n");
+        return 1; // Indicate failure
+    }
+
+
+    // --- Phase 2: Initialize Bitmap Data and Load Textures ---
+    // Call the renamed initialization function
+    if (InitBitmapAndTXs(renderer) != 0) {
+        fprintf(stderr, "Failed to initialize bitmap data and textures.\n");
+        DeInitAll(window, renderer);
+        return 1; // Indicate failure
+    }
+    printf("Bitmap data and textures initialized.\n");
+
+    // --- End Initialize Bitmap Data and Load Textures ---
+
+    // --- Main Application Loop ---
+    // Call ProcessNeko to run the main game loop
+    printf("Entering main application loop (calling ProcessNeko).\n");
+    ProcessNeko(renderer);
+    printf("ProcessNeko returned. Application loop finished.\n");
+
+    // Deinitialize SDL window, renderer, and quit SDL
+    DeInitAll(window, renderer);
 
 
     return 0; // Indicate successful execution
