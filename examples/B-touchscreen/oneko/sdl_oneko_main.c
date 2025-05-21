@@ -1,18 +1,20 @@
 // sdl_oneko_main.c
 
 #include <SDL.h>
+#include <math.h>  // For distance calculations (will be needed for movement logic)
+#include <stdbool.h>  // For bool type, true, and false
 #include <stdio.h>
-#include <stdlib.h> // For exit()
-#include <math.h>   // For distance calculations (will be needed for movement logic)
+#include <stdlib.h>  // For exit()
 
-// Include your XBM helper header.
-// This header MUST contain the declaration for load_xbm_as_texture AND create_surface_from_xbm.
+#include "oneko.h"
 #include "sdl_xbm_helper.h"
 
-// Include the original oneko header.
-// This will include the XBM data and define structures like BitmapGCData and AnimationPattern,
-// and likely the animation state enums/constants (like NEKO_STOP, NEKO_SLEEP, etc.).
-#include "oneko.h"
+/*
+ * グローバル変数
+ */
+
+int WindowWidth;            /* ルートウィンドウの幅 */
+int WindowHeight;           /* ルートウィンドウの高さ */
 
 // Define some basic window dimensions.
 #define INITIAL_WINDOW_WIDTH 640
@@ -37,8 +39,8 @@ typedef struct {
 } BitmapTXData; // Renamed struct
 
 
-// Temporary enum to provide human-readable names for the indices in BitmapTXDataTable.
 // The order of these enum values MUST match the order of entries in BitmapTXDataTable.
+// gemini DO NOT MODIFY OR DELETE THIS STRUCTURE
 typedef enum {
     TX_MATI2 = 0,
     TX_JARE2,
@@ -84,6 +86,7 @@ typedef enum {
 // The InitBitmapData function will later populate the 'texture' members.
 // Based on the provided BitmapGCDataTable initialization snippet.
 // The compiler will automatically determine the size of the array based on the initializer list.
+// gemini DO NOT MODIFY OR DELETE THIS STRUCTURE
 // clang-format off
 BitmapTXData BitmapTXDataTable[] = { // Renamed array
     // { image_bits, mask_bits, width, height, texture (NULL) }
@@ -121,30 +124,25 @@ BitmapTXData BitmapTXDataTable[] = { // Renamed array
     { (const unsigned char*)rtogi1_bits, (const unsigned char*)rtogi1_mask_bits, rtogi1_width, rtogi1_height, NULL }, // 30: Right Scratching 1
     { (const unsigned char*)rtogi2_bits, (const unsigned char*)rtogi2_mask_bits, rtogi2_width, rtogi2_height, NULL }, // 31: Right Scratching 2
 
-    // The final NULL entry as provided in the snippet
     { NULL, NULL, 0, 0, NULL } // 32: NULL Terminator
 };
 // clang-format on
 
 // The total number of animation frames (excluding the NULL terminator).
-// We can calculate this from the size of the BitmapTXDataTable.
 #define TOTAL_BITMAP_FRAMES (sizeof(BitmapTXDataTable) / sizeof(BitmapTXData) - 1) // Renamed define
 
 
 // Define an SDL-compatible Animation Pattern structure.
-// Renamed from SDLAnimationState to AnimationState.
-// This will store indices into the BitmapTXDataTable.
-// It mirrors the structure of the original AnimationPattern[][2].
+// gemini DO NOT MODIFY OR DELETE THIS STRUCTURE
 typedef struct {
     int frame_indices[2]; // Indices into BitmapTXDataTable for two frames
 } AnimationState; // Renamed struct
 
-// Declare and initialize the SDL-compatible animation pattern table.
-// Renamed from sdl_animation_pattern to AnimationPattern.
+
 // This table maps animation states to sequences of frame indices.
 // We use the #define values from oneko.h for the state indices.
-// !! VERIFY THESE INDICES AGAINST THE ORIGINAL ONEKO.C AnimationPattern INITIALIZATION !!
 // The order of these entries MUST match the integer values of the animation state #defines.
+// gemini DO NOT MODIFY OR DELETE THIS STRUCTURE
 // clang-format off
 AnimationState AnimationPattern[] = { // Renamed array
     // State 0: NEKO_STOP (Standing)
@@ -156,7 +154,7 @@ AnimationState AnimationPattern[] = { // Renamed array
     // State 3: NEKO_AKUBI (Yawning) - Assuming this corresponds to TX_MATI3 and TX_AWAKE based on index
     { { TX_MATI3, TX_AWAKE } },
     // State 4: NEKO_SLEEP
-    { { TX_SLEEP1, TX_SLEEP2 } }, // Uses TX_SLEEP1 and TX_SLEEP2
+    { { TX_SLEEP1, TX_SLEEP2 } }, // Uses TX_SLEP1 and TX_SLEEP2
     // State 5: NEKO_AWAKE
     { { TX_AWAKE, TX_AWAKE } }, // Uses TX_AWAKE for both ticks
     // State 6: NEKO_U_MOVE (Walking Up)
@@ -192,25 +190,45 @@ AnimationState AnimationPattern[] = { // Renamed array
 #define TOTAL_ANIMATION_STATES (sizeof(AnimationPattern) / sizeof(AnimationState)) // Updated define
 
 
-// Game state variables (mirroring original oneko)
-int NekoX = 100; // Initial X position
-int NekoY = 100; // Initial Y position
-// Initial state using the #define from oneko.h
-int NekoState = NEKO_STOP;
-int NekoTickCount = 0; // Animation tick counter
-int MouseX = 0; // Mouse X position
-int MouseY = 0; // Mouse Y position
+/*
+ * いろいろな初期設定 (オプション、リソースで変えられるよ)
+ */
+
+#define IdleSpace       5       /* マウスがこの範囲にあれば何もしない */
+#define NekoSpeed       16      /* 猫の移動スピード */
+#define MAX_TICK        9999    /* ティックの最大値 (アニメーションフレームのサイクル) */
 
 
-// Variables to store the dimensions of the currently selected character's textures (assuming they are uniform)
-// Renamed from character_texture_width/height to bitmap_texture_width/height.
-// These will be assigned in InitBitmapData.
-int bitmap_texture_width = 0;
-int bitmap_texture_height = 0;
 
-// Forward declarations for functions in sdl_xbm_helper.c
-SDL_Texture* load_xbm_as_texture(SDL_Renderer* renderer, const unsigned char* image_bits, int width, int height, const unsigned char* mask_bits);
-SDL_Surface* create_surface_from_xbm(const unsigned char* xbm_data, int width, int height);
+/*
+ * いろいろな状態変数
+ */
+
+int NekoTickCount = 0;         /* 猫動作カウンタ */
+int NekoStateCount;            /* 猫同一状態カウンタ */
+int NekoState = NEKO_STOP;     /* 猫の状態 */
+
+int MouseX = 0;                /* マウスＸ座標 */
+int MouseY = 0;                /* マウスＹ座標 */
+
+int PrevMouseX = 0;            /* 直前のマウスＸ座標 */
+int PrevMouseY = 0;            /* 直前のマウスＹ座標 */
+
+int NekoX = 100;               /* 猫Ｘ座標 */
+int NekoY = 100;               /* 猫Ｙ座標 */
+
+int NekoMoveDx;            /* 猫移動距離Ｘ */
+int NekoMoveDy;            /* 猫移動距離Ｙ */
+
+int NekoLastX;             /* 猫最終描画Ｘ座標 */
+int NekoLastY;             /* 猫最終描画Ｙ座標 */
+
+
+// Define sine values for directional calculations (from original oneko.c)
+#define PI              3.14159265358979323846
+#define SinPiPer8       0.38268343236508977173
+#define SinPiPer8Times3 0.92387953251128675613
+
 
 
 // --- X11-specific functions that are not needed in the SDL port ---
@@ -245,11 +263,15 @@ SDL_Surface* create_surface_from_xbm(const unsigned char* xbm_data, int width, i
 // X11 error handler function. Not needed with SDL.
 // int XsetErrorHandler(XErrorHandler handler);
 
-// Signal handling function. SDL handles signals differently or they might not be needed for basic operation.
+// Signal handling function. SDL public api handles notifcations with events.
 // typedef void (*sighandler_t)(int);
 // sighandler_t signal(int signum, sighandler_t handler);
 
 // --- End of X11-specific functions ---
+
+// Forward declarations for functions in sdl_xbm_helper.c
+SDL_Texture* load_xbm_as_texture(SDL_Renderer* renderer, const unsigned char* image_bits, int width, int height, const unsigned char* mask_bits);
+SDL_Surface* create_surface_from_xbm(const unsigned char* xbm_data, int width, int height);
 
 
 // Forward declarations for SDL port functions
@@ -265,42 +287,71 @@ void SetNekoState(int SetValue);
 void DrawNeko(SDL_Renderer* renderer, int x, int y, int frame_index);
 void RedrawNeko(SDL_Renderer* renderer);
 void NekoDirection(void);
-int IsNekoDontMove(void);
-int IsNekoMoveStart(void);
+bool IsNekoDontMove(void);
+bool IsNekoMoveStart(void); // Changed to bool
 void CalcDxDy(void);
 void NekoThinkDraw(SDL_Renderer* renderer);
 int InitBitmapAndTXs(SDL_Renderer* renderer);
 
 
-// Placeholder for ported/reimplemented functions implementations
+// --- Implementation of ported/reimplemented functions ---
 
 // Function to control update timing based on tick_interval
 // Returns 1 if it's time for an update, 0 otherwise.
+// Uses SDL's high-resolution counter for timing.
 int Interval(void) {
-    // This logic will be integrated into NekoThinkDraw's timing check.
-    // For now, it's a placeholder.
-    return 1; // Always update for now
+    static Uint64 last_interval_time = 0; // Time of the last interval check
+    Uint64 current_time = SDL_GetPerformanceCounter();
+    Uint64 frequency = SDL_GetPerformanceFrequency();
+    double elapsed_seconds = (double)(current_time - last_interval_time) / frequency;
+    double tick_interval = 1.0 / 6.0; // Changed from 1.0 / 12.0 to 1.0 / 6.0 to slow down 2x
+
+    if (elapsed_seconds >= tick_interval) {
+        last_interval_time = current_time; // Update for the next interval
+        return 1; // It's time for an update
+    }
+
+    return 0; // Not time for an update yet
 }
 
-// Function to increment NekoTickCount and handle wrapping
-void TickCount(void) {
-    // This logic will be integrated into NekoThinkDraw's update section.
-    // For now, it's a placeholder.
+/*
+ * ティックカウント処理
+ */
+// gemini DO NOT MODIFY THIS FUNCTION
+void
+TickCount()
+{
+    if (++NekoTickCount >= MAX_TICK) {
+        NekoTickCount = 0;
+    }
+
+    if (NekoTickCount % 2 == 0) {
+        if (NekoStateCount < MAX_TICK) {
+            NekoStateCount++;
+        }
+    }
 }
 
-// Function to set the NekoState
-void SetNekoState(int SetValue) {
-    // This will be implemented to update the global NekoState variable.
-    // For now, it's a placeholder.
-    NekoState = SetValue; // Simple assignment for now
+/*
+ * 猫状態設定
+ */
+// gemini DO NOT MODIFY THIS FUNCTION
+void
+SetNekoState(int SetValue)
+{
+    NekoTickCount = 0;
+    NekoStateCount = 0;
+
+    NekoState = SetValue;
 }
+
 
 // SDL rendering function
-void DrawNeko(SDL_Renderer* renderer, int x, int y, int frame_index) {
+void DrawNeko(SDL_Renderer* renderer, int x, int y, int frame_index) { // Corrected: removed extra 'int', added 'y'
     // This will draw the specified frame at the given coordinates using SDL_RenderCopy.
-    // For now, it's a placeholder.
      if (frame_index >= 0 && frame_index < TOTAL_BITMAP_FRAMES && BitmapTXDataTable[frame_index].texture != NULL) {
-        SDL_Rect dest_rect = { x, y, bitmap_texture_width, bitmap_texture_height };
+        // Use BITMAP_WIDTH and BITMAP_HEIGHT from oneko.h
+        SDL_Rect dest_rect = { x, y, BITMAP_WIDTH, BITMAP_HEIGHT };
         SDL_RenderCopy(renderer, BitmapTXDataTable[frame_index].texture, NULL, &dest_rect);
      } else {
          // Handle error or draw a default/blank if frame_index is invalid
@@ -311,71 +362,321 @@ void DrawNeko(SDL_Renderer* renderer, int x, int y, int frame_index) {
 // SDL implementation for clearing and redrawing
 void RedrawNeko(SDL_Renderer* renderer) {
     // This will clear the renderer and call DrawNeko with the current state.
-    // For now, it's a placeholder.
     SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF); // Black background
     SDL_RenderClear(renderer);
-    // Call DrawNeko with current NekoX, NekoY, and the appropriate frame index
-    // This part needs the animation state logic.
-    int current_frame_index = 0; // Placeholder
-     if (NekoState >= 0 && NekoState < TOTAL_ANIMATION_STATES) {
+
+    // Determine the correct frame index from the animation pattern based on state and tick count
+    int current_frame_index = 0;
+    // Ensure NekoState is within the bounds of our animation pattern table
+    if (NekoState >= 0 && NekoState < TOTAL_ANIMATION_STATES) {
+         // Check if not sleeping using the #define from oneko.h
+         // The original code uses (NekoTickCount & 0x1) for non-sleeping and (NekoTickCount >> 2) & 0x1 for sleeping
          if (NekoState != NEKO_SLEEP) {
              current_frame_index = AnimationPattern[NekoState].frame_indices[NekoTickCount & 0x1];
          } else {
              current_frame_index = AnimationPattern[NekoState].frame_indices[(NekoTickCount >> 2) & 0x1];
          }
-     }
+    } else {
+         fprintf(stderr, "Warning: Invalid NekoState: %d. Drawing default frame.\n", NekoState);
+         current_frame_index = NEKO_STOP; // Fallback to standing frame index using #define
+    }
+
+    // Draw Neko at the current position with the determined frame
     DrawNeko(renderer, NekoX, NekoY, current_frame_index);
+
+    // Update the screen with everything that has been rendered
     SDL_RenderPresent(renderer);
 }
 
 // Ported logic for determining direction
-void NekoDirection(void) {
-    // This will contain the logic to update NekoState based on mouse position relative to NekoX, NekoY.
-    // For now, it's a placeholder.
-}
+// This function sets the NekoState based on the mouse position relative to Neko.
+// Using the exact code from the original oneko.c NekoDirection function.
+// gemini DO NOT MODIFY THIS FUNCTION
+void
+NekoDirection()
+{
+    int                 NewState;
+    double              LargeX, LargeY;
+    double              Length;
+    double              SinTheta;
 
-// Ported logic for checking if Neko should not move
-int IsNekoDontMove(void) {
-    // This will contain the logic to check if Neko should stay still (e.g., mouse is close).
-    // For now, it's a placeholder.
-    return 0; // Always allow movement for now
-}
+    if (NekoMoveDx == 0 && NekoMoveDy == 0) {
+        NewState = NEKO_STOP;
+    } else {
+        LargeX = (double)NekoMoveDx;
+        LargeY = (double)(-NekoMoveDy); // Y-axis is inverted (larger Y means lower on screen)
+        Length = sqrt(LargeX * LargeX + LargeY * LargeY);
+        SinTheta = LargeY / Length;
 
-// Ported logic for checking if Neko should start moving
-int IsNekoMoveStart(void) {
-    // This will contain the logic to check if Neko should start moving (e.g., mouse is far enough).
-    // For now, it's a placeholder.
-    return 1; // Always allow movement start for now
-}
-
-// Ported logic for calculating movement and state
-void CalcDxDy(void) {
-    // This will contain the core movement and state calculation logic,
-    // using MouseX, MouseY, NekoX, NekoY, and updating NekoState.
-    // It will also calculate dx and dy. These should probably be global or
-    // returned by the function if we strictly follow the original signature.
-    // For now, it's a placeholder.
-}
-
-// Ported main game logic and drawing function
-void NekoThinkDraw(SDL_Renderer* renderer) {
-    // This function will call Interval() to check timing,
-    // then CalcDxDy(), TickCount(), update NekoX/NekoY,
-    // and finally call RedrawNeko().
-    // For now, it's a placeholder.
-
-    // Check if it's time to update
-    if (Interval()) {
-        // Call game logic functions (placeholders for now)
-        CalcDxDy();
-        TickCount();
-        // Update position (based on CalcDxDy results, which are placeholders)
-        // NekoX += dx; // dx will come from CalcDxDy
-        // NekoY += dy; // dy will come from CalcDxDy
-
-        // Redraw the screen with the updated state
-        RedrawNeko(renderer);
+        // First, handle purely vertical or horizontal movements explicitly
+        if (NekoMoveDx == 0) { // Purely vertical movement
+            if (NekoMoveDy < 0) { // Moving Up
+                NewState = NEKO_U_MOVE;
+            } else { // Moving Down
+                NewState = NEKO_D_MOVE; // This is the crucial change for straight down
+            }
+        } else if (NekoMoveDy == 0) { // Purely horizontal movement
+            if (NekoMoveDx < 0) { // Moving Left
+                NewState = NEKO_L_MOVE;
+            } else { // Moving Right
+                NewState = NEKO_R_MOVE;
+            }
+        }
+        // Then, handle diagonal movements using angular logic
+        // These branches will only be reached if NekoMoveDx != 0 AND NekoMoveDy != 0
+        else if (NekoMoveDx > 0) { // Moving Right (diagonal)
+            if (SinTheta > SinPiPer8Times3) {
+                NewState = NEKO_U_MOVE; // Original oneko.c behavior for angles > 67.5 degrees
+            } else if ((SinTheta <= SinPiPer8Times3)
+                        && (SinTheta > SinPiPer8)) {
+                NewState = NEKO_UR_MOVE;
+            } else if ((SinTheta <= SinPiPer8)
+                        && (SinTheta > -(SinPiPer8))) {
+                NewState = NEKO_R_MOVE; // Original oneko.c behavior for angles between -22.5 and 22.5 degrees
+            } else {
+                NewState = NEKO_DR_MOVE;
+            }
+        } else { // NekoMoveDx < 0 (Moving Left diagonal)
+            if (SinTheta > SinPiPer8Times3) {
+                NewState = NEKO_U_MOVE; // Original oneko.c behavior for angles > 67.5 degrees
+            } else if ((SinTheta <= SinPiPer8Times3)
+                        && (SinTheta > SinPiPer8)) {
+                NewState = NEKO_UL_MOVE;
+            } else if ((SinTheta <= SinPiPer8)
+                        && (SinTheta > -(SinPiPer8))) {
+                NewState = NEKO_L_MOVE; // Original oneko.c behavior for angles between -22.5 and 22.5 degrees
+            } else {
+                NewState = NEKO_DL_MOVE;
+            }
+        }
     }
+
+    if (NekoState != NewState) {
+        SetNekoState(NewState);
+    }
+}
+// END - GEMINI DO NOT MODIFY
+
+
+/*
+ * 猫移動状況判定
+ */
+// gemini DO NOT MODIFY THIS FUNCTION
+bool
+IsNekoDontMove()
+{
+    if (NekoX == NekoLastX && NekoY == NekoLastY) {
+        return(true);
+    } else {
+        return(false);
+    }
+}
+
+/*
+ * 猫移動開始判定
+ */
+// gemini DO NOT MODIFY THIS FUNCTION
+bool
+IsNekoMoveStart()
+{
+    bool result;
+    if ((PrevMouseX >= MouseX - IdleSpace
+         && PrevMouseX <= MouseX + IdleSpace) &&
+         (PrevMouseY >= MouseY - IdleSpace
+         && PrevMouseY <= MouseY + IdleSpace)) {
+        result = false;
+    } else {
+        result = true;
+    }
+    return result;
+}
+
+/*
+ * 猫移動 dx, dy 計算
+ */
+// gemini DO NOT MODIFY THIS FUNCTION
+void
+CalcDxDy()
+{
+    double              LargeX, LargeY;
+    double              DoubleLength, Length;
+    
+    /* In the old X11 code, here we polled for the latest 
+    mouse coorindates.  In SDL, we receive the event and update the global
+    variables.  To make the old X11 calculation code work, we do the math backwards
+    to derive LargeX and LargeY.
+    */
+    // Removed PrevMouseX and PrevMouseY update from here
+
+    // Calculate the difference vector from Neko's position to the mouse's position
+    LargeX = (double)(MouseX - NekoX);
+    LargeY = (double)(MouseY - NekoY);
+
+    DoubleLength = LargeX * LargeX + LargeY * LargeY;
+
+    if (DoubleLength != (double)0) {
+        Length = sqrt(DoubleLength);
+        if (Length <= NekoSpeed) {
+            NekoMoveDx = (int)LargeX;
+            NekoMoveDy = (int)LargeY;
+        } else {
+            NekoMoveDx = (int)((NekoSpeed * LargeX) / Length);
+            NekoMoveDy = (int)((NekoSpeed * LargeY) / Length);
+        }
+    } else {
+        NekoMoveDx = NekoMoveDy = 0;
+    }
+}
+
+/*
+ * 猫思考描画処理
+ */
+// gemini DO NOT MODIFY THIS FUNCTION
+void
+NekoThinkDraw(SDL_Renderer* renderer) // Added renderer parameter
+{
+    // Call Interval() at the beginning to control the update rate
+    if (!Interval()) {
+        return; // Not time for a new tick, exit early
+    }
+
+    // Capture Neko's current position before any movement for the IsNekoDontMove() check
+    NekoLastX = NekoX;
+    NekoLastY = NekoY;
+
+    CalcDxDy();
+
+    // Removed direct DrawNeko calls from here. RedrawNeko will handle drawing.
+    // if (NekoState != NEKO_SLEEP) {
+    //     DrawNeko(renderer, NekoX, NekoY,
+    //             AnimationPattern[NekoState].frame_indices[NekoTickCount & 0x1]);
+    // } else {
+    //     DrawNeko(renderer, NekoX, NekoY,
+    //             AnimationPattern[NekoState].frame_indices[(NekoTickCount >> 2) & 0x1]);
+    // }
+
+    TickCount();
+
+    switch (NekoState) {
+    case NEKO_STOP:
+        if (IsNekoMoveStart()) {
+            SetNekoState(NEKO_AWAKE);
+            break;
+        }
+        if (NekoStateCount < NEKO_STOP_TIME) {
+            break;
+        }
+        // Check if Neko is at any boundary, regardless of NekoMoveDx/Dy
+        if (NekoX <= 0) { // At left edge
+            SetNekoState(NEKO_L_TOGI);
+        } else if (NekoX >= WindowWidth - BITMAP_WIDTH) { // At right edge
+            SetNekoState(NEKO_R_TOGI);
+        } else if (NekoY <= 0) { // At top edge
+            SetNekoState(NEKO_U_TOGI);
+        } else if (NekoY >= WindowHeight - BITMAP_HEIGHT) { // At bottom edge
+            SetNekoState(NEKO_D_TOGI);
+        } else {
+            // Only if not at any edge, proceed with idle animations
+            SetNekoState(NEKO_JARE);
+        }
+        break;
+    case NEKO_JARE:
+        if (IsNekoMoveStart()) {
+            SetNekoState(NEKO_AWAKE);
+            break;
+        }
+        if (NekoStateCount < NEKO_JARE_TIME) {
+            break;
+        }
+        SetNekoState(NEKO_KAKI);
+        break;
+    case NEKO_KAKI:
+        if (IsNekoMoveStart()) {
+            SetNekoState(NEKO_AWAKE);
+            break;
+        }
+        if (NekoStateCount < NEKO_KAKI_TIME) {
+            break;
+        }
+        SetNekoState(NEKO_AKUBI);
+        break;
+    case NEKO_AKUBI:
+        if (IsNekoMoveStart()) {
+            SetNekoState(NEKO_AWAKE);
+            break;
+        }
+        if (NekoStateCount < NEKO_AKUBI_TIME) {
+            break;
+        }
+        SetNekoState(NEKO_SLEEP);
+        break;
+    case NEKO_SLEEP:
+        if (IsNekoMoveStart()) {
+            SetNekoState(NEKO_AWAKE);
+            break;
+        }
+        break;
+    case NEKO_AWAKE:
+        if (NekoStateCount < NEKO_AWAKE_TIME) {
+            break;
+        }
+        NekoDirection();        /* 猫が動く向きを求める */
+        break;
+    case NEKO_U_MOVE:
+    case NEKO_D_MOVE:
+    case NEKO_L_MOVE:
+    case NEKO_R_MOVE:
+    case NEKO_UL_MOVE:
+    case NEKO_UR_MOVE:
+    case NEKO_DL_MOVE:
+    case NEKO_DR_MOVE:
+        NekoX += NekoMoveDx;
+        NekoY += NekoMoveDy;
+
+        // Clamp Neko's X position to stay within window bounds
+        if (NekoX < 0) {
+            NekoX = 0;
+        } else if (NekoX > WindowWidth - BITMAP_WIDTH) {
+            NekoX = WindowWidth - BITMAP_WIDTH;
+        }
+
+        // Clamp Neko's Y position to stay within window bounds
+        if (NekoY < 0) {
+            NekoY = 0;
+        } else if (NekoY > WindowHeight - BITMAP_HEIGHT) {
+            NekoY = WindowHeight - BITMAP_HEIGHT;
+        }
+
+        NekoDirection();
+        if (IsNekoDontMove()) { // Removed original 'if (IsWindowOver())' block as it's X11-specific.
+            SetNekoState(NEKO_STOP);
+        }
+        break;
+    case NEKO_U_TOGI:
+    case NEKO_D_TOGI:
+    case NEKO_L_TOGI:
+    case NEKO_R_TOGI:
+        if (IsNekoMoveStart()) {
+            SetNekoState(NEKO_AWAKE);
+            break;
+        }
+        if (NekoStateCount < NEKO_TOGI_TIME) {
+            break;
+        }
+        SetNekoState(NEKO_KAKI);
+        break;
+    default:
+        /* Internal Error */
+        SetNekoState(NEKO_STOP);
+        break;
+    }
+  
+    // This is the critical change: Redraw the scene after all logic updates
+    RedrawNeko(renderer);
+
+    // Update PrevMouseX and PrevMouseY at the end of the tick for the next IsNekoMoveStart() check
+    PrevMouseX = MouseX;
+    PrevMouseY = MouseY;
 }
 
 
@@ -423,12 +724,10 @@ int InitBitmapAndTXs(SDL_Renderer* renderer) {
     // Assign dimensions after the table is populated
     // Check if the table has at least one entry before accessing index 0
     if (BitmapTXDataTable[0].image_bits != NULL) {
-        bitmap_texture_width = BitmapTXDataTable[0].width;
-        bitmap_texture_height = BitmapTXDataTable[0].height;
-        printf("Bitmap texture dimensions: %dx%d\n", bitmap_texture_width, bitmap_texture_height);
+        // Removed assignments to bitmap_texture_width and bitmap_texture_height
+        printf("Bitmap texture dimensions: %dx%d\n", BITMAP_WIDTH, BITMAP_HEIGHT);
     } else {
-         bitmap_texture_width = 0;
-         bitmap_texture_height = 0;
+         // Removed assignments to bitmap_texture_width and bitmap_texture_height
          fprintf(stderr, "Warning: No character frames loaded.\n");
     }
 
@@ -461,6 +760,11 @@ int InitScreen(char *DisplayName, SDL_Window** window, SDL_Renderer** renderer) 
     }
     printf("SDL window created successfully.\n");
 
+    // Get the initial window size and store it in global variables
+    SDL_GetWindowSize(*window, &WindowWidth, &WindowHeight);
+    printf("Initial window dimensions: %dx%d\n", WindowWidth, WindowHeight);
+
+
     // Create a hardware accelerated renderer for the window
     *renderer = SDL_CreateRenderer(*window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (*renderer == NULL) {
@@ -483,11 +787,18 @@ void ProcessEvent(SDL_Event* e, int* quit) {
             *quit = 1; // Set the quit flag to exit the main loop
              printf("Quit event received.\n");
         }
+        // Handle window resize events
+        if (e->type == SDL_WINDOWEVENT) {
+            if (e->window.event == SDL_WINDOWEVENT_RESIZED) {
+                WindowWidth = e->window.data1;
+                WindowHeight = e->window.data2;
+                printf("Window resized to: %dx%d\n", WindowWidth, WindowHeight);
+            }
+        }
         // --- Handle mouse motion and other events here ---
         if (e->type == SDL_MOUSEMOTION) {
             MouseX = e->motion.x;
             MouseY = e->motion.y;
-            // printf("Mouse moved to: %d, %d\n", MouseX, MouseY); // Optional: print mouse movement
         }
         // Add other event types as needed (e.g., mouse clicks, keyboard events)
     }
@@ -579,7 +890,7 @@ int main(int argc, char* argv[]) {
     // --- Phase 2: Initialize Bitmap Data and Load Textures ---
     // Call the renamed initialization function
     if (InitBitmapAndTXs(renderer) != 0) {
-        fprintf(stderr, "Failed to initialize bitmap data and textures.\n");
+        fprintf(stderr, "Failed to initialize bitmap data and textures.\n.");
         DeInitAll(window, renderer);
         return 1; // Indicate failure
     }
